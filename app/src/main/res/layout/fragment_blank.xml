@@ -1,0 +1,61 @@
+<androidx.constraintlayout.widget.ConstraintLayout  xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <GridLayout
+        android:id="@+id/gridLayout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="8dp"
+        android:columnCount="2"
+        android:rowCount="2"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="80dp"
+        android:layout_gravity="center"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/captureButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        >
+
+        <!-- Repeated for 4 views -->
+        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
+            <androidx.camera.view.PreviewView android:id="@+id/preview1" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView android:id="@+id/overlay1" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        </FrameLayout>
+
+        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
+            <androidx.camera.view.PreviewView android:id="@+id/preview2" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView android:id="@+id/overlay2" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        </FrameLayout>
+
+        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
+            <androidx.camera.view.PreviewView android:id="@+id/preview3" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView android:id="@+id/overlay3" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        </FrameLayout>
+
+        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
+            <androidx.camera.view.PreviewView android:id="@+id/preview4" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView android:id="@+id/overlay4" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        </FrameLayout>
+    </GridLayout>
+
+    <Button
+        android:id="@+id/captureButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Capture"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="12dp"
+        />
+</androidx.constraintlayout.widget.ConstraintLayout>
