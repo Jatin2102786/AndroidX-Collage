@@ -49,6 +49,7 @@ class TwoFragment : Fragment() {
 
     private lateinit var previewViews: List<PreviewView>
     private lateinit var imageOverlays: List<ImageView>
+    private lateinit var dustbinIcons: List<ImageView> // Add dustbin icons list
     private lateinit var captureButton: Button
 
     private var imageCapture: ImageCapture? = null
@@ -57,16 +58,14 @@ class TwoFragment : Fragment() {
 
     private var currentCaptureIndex = 0
     private val maxCaptures = 2
-    private var flag = false
-    private var updateIndex = -1
+    private var isRetakeMode = false
+    private var retakeIndex = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-
             param1 = it.getString(ARG_PARAM1)
             param2 = it.getString(ARG_PARAM2)
-
         }
     }
 
@@ -89,6 +88,13 @@ class TwoFragment : Fragment() {
             view.findViewById(R.id.overlay1),
             view.findViewById(R.id.overlay2)
         )
+
+        // Initialize dustbin icons - you need to add these ImageViews to your layout
+        dustbinIcons = listOf(
+            view.findViewById(R.id.dustbin1),
+            view.findViewById(R.id.dustbin2)
+        )
+
         captureButton = view.findViewById(R.id.captureButton)
 
         // Set scale type for preview views
@@ -96,12 +102,9 @@ class TwoFragment : Fragment() {
             previewView.scaleType = PreviewView.ScaleType.FILL_START
         }
 
-
-
         captureButton.setOnClickListener {
-
-            if (flag) {
-
+            if (isRetakeMode) {
+                retakeImage()
             } else {
                 if (currentCaptureIndex < maxCaptures) {
                     captureImage()
@@ -109,30 +112,177 @@ class TwoFragment : Fragment() {
                     resetCapture()
                 }
             }
-
         }
+
+        // Set up long press listeners for image overlays
+        setupLongPressListeners()
+
+        // Set up dustbin icon click listeners
+        setupDustbinClickListeners()
 
         binding.overlay1.setOnClickListener {
             Log.d("Two Fragment", "onViewCreated: Overlay1")
         }
 
-//        binding.preview1.setOnClickListener {
-//            flag = true
-//            updateIndex = 0
-//            capturedBitmaps[updateIndex].recycle()
-//        }
-
-
-
-//        binding.preview1.setOnClickListener {
-//            flag = true
-//            updateIndex = 1
-//            capturedBitmaps[updateIndex].recycle()
-//
-//        }
-
         updateUI()
         startCamera()
+    }
+
+    private fun setupLongPressListeners() {
+        imageOverlays.forEachIndexed { index, imageView ->
+            imageView.setOnLongClickListener {
+                if (capturedBitmaps.size > index) {
+                    showDustbinIcon(index)
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    private fun setupDustbinClickListeners() {
+        dustbinIcons.forEachIndexed { index, dustbinIcon ->
+            dustbinIcon.setOnClickListener {
+                // Hide the dustbin icon
+                hideDustbinIcon(index)
+                // Start retake mode for this image
+                startRetakeMode(index)
+            }
+        }
+    }
+
+    private fun showDustbinIcon(index: Int) {
+        // Hide all other dustbin icons first
+        dustbinIcons.forEach { it.visibility = View.GONE }
+
+        // Show the dustbin icon for the selected image
+        dustbinIcons[index].visibility = View.VISIBLE
+
+        Toast.makeText(requireContext(), "Tap dustbin to retake photo ${index + 1}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun hideDustbinIcon(index: Int) {
+        dustbinIcons[index].visibility = View.GONE
+    }
+
+    private fun hideAllDustbinIcons() {
+        dustbinIcons.forEach { it.visibility = View.GONE }
+    }
+
+    private fun startRetakeMode(index: Int) {
+        isRetakeMode = true
+        retakeIndex = index
+
+        // Hide all dustbin icons
+        hideAllDustbinIcons()
+
+        // Recycle the old bitmap to free memory
+        if (capturedBitmaps.size > index) {
+            capturedBitmaps[index].recycle()
+        }
+
+        // Hide the overlay for the image being retaken
+        imageOverlays[index].visibility = View.GONE
+        imageOverlays[index].setImageBitmap(null)
+
+        // Show the preview for the specific index
+        previewViews.forEachIndexed { i, previewView ->
+            previewView.visibility = if (i == index) View.VISIBLE else View.GONE
+        }
+
+        // Update camera to show preview for the retake index
+        setupCameraForRetake()
+
+        updateUI()
+
+        Toast.makeText(requireContext(), "Retaking photo ${index + 1}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun setupCameraForRetake() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                val cameraProvider = cameraProviderFuture.get()
+                setupCamera(cameraProvider)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    private fun retakeImage() {
+        val imageCapture = imageCapture ?: return
+
+        captureButton.isEnabled = false
+
+        imageCapture.takePicture(
+            ContextCompat.getMainExecutor(requireContext()),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                    try {
+                        val bitmap = convertImageProxyToBitmap(imageProxy)
+                        imageProxy.close()
+
+                        // Replace the bitmap at the retake index
+                        if (capturedBitmaps.size > retakeIndex) {
+                            capturedBitmaps[retakeIndex] = bitmap
+                        } else {
+                            // This should not happen, but handle gracefully
+                            capturedBitmaps.add(bitmap)
+                        }
+
+                        // Update the overlay
+                        imageOverlays[retakeIndex].setImageBitmap(bitmap)
+                        imageOverlays[retakeIndex].visibility = View.VISIBLE
+
+                        // Exit retake mode
+                        exitRetakeMode()
+
+                        updateUI()
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), "Image processing failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        captureButton.isEnabled = true
+                    }
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    captureButton.isEnabled = true
+                    Toast.makeText(requireContext(), "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+                    updateUI()
+                }
+            }
+        )
+    }
+
+    private fun exitRetakeMode() {
+        isRetakeMode = false
+        retakeIndex = -1
+
+        // Hide all dustbin icons
+        hideAllDustbinIcons()
+
+        // If all images are captured, show the "Start Over" state
+        if (currentCaptureIndex >= maxCaptures) {
+            // Hide all preview views
+            previewViews.forEach { it.visibility = View.GONE }
+        } else {
+            // Continue with normal capture flow
+            setupCameraForNormalMode()
+        }
+    }
+
+    private fun setupCameraForNormalMode() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                val cameraProvider = cameraProviderFuture.get()
+                setupCamera(cameraProvider)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
     }
 
     private fun startCamera() {
@@ -163,19 +313,15 @@ class TwoFragment : Fragment() {
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {
-            if(flag) {
-                cameraProvider.unbindAll()
-                // Set preview to current active preview view
-                preview.setSurfaceProvider(previewViews[updateIndex].surfaceProvider)
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+            cameraProvider.unbindAll()
 
-            } else {
-                cameraProvider.unbindAll()
+            val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
+
+            if (activeIndex < previewViews.size) {
                 // Set preview to current active preview view
-                preview.setSurfaceProvider(previewViews[currentCaptureIndex].surfaceProvider)
+                preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
             }
-
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Camera binding failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
@@ -226,7 +372,6 @@ class TwoFragment : Fragment() {
     }
 
     private fun switchToNextPreview() {
-
         if (currentCaptureIndex < maxCaptures) {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
             cameraProviderFuture.addListener({
@@ -245,11 +390,9 @@ class TwoFragment : Fragment() {
                 }
             }, ContextCompat.getMainExecutor(requireContext()))
         }
-
     }
 
     private fun convertImageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
-
         return when (imageProxy.format) {
             ImageFormat.JPEG -> {
                 val buffer = imageProxy.planes[0].buffer
@@ -264,11 +407,9 @@ class TwoFragment : Fragment() {
                 throw IllegalArgumentException("Unsupported image format: ${imageProxy.format}")
             }
         }
-
     }
 
     private fun yuv420ToBitmap(imageProxy: ImageProxy): Bitmap {
-
         val yBuffer = imageProxy.planes[0].buffer
         val uBuffer = imageProxy.planes[1].buffer
         val vBuffer = imageProxy.planes[2].buffer
@@ -287,7 +428,6 @@ class TwoFragment : Fragment() {
         yuvImage.compressToJpeg(Rect(0, 0, imageProxy.width, imageProxy.height), 100, out)
         val bytes = out.toByteArray()
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-
     }
 
     private fun createAndSaveCollage() {
@@ -324,7 +464,7 @@ class TwoFragment : Fragment() {
     }
 
     private fun saveBitmapToStorage(bitmap: Bitmap) {
-        val filename = "collage_${System.currentTimeMillis()}.jpg"
+        val filename = "collage_2x_${System.currentTimeMillis()}.jpg"
         val resolver = requireContext().contentResolver
 
         val contentValues = ContentValues().apply {
@@ -338,7 +478,7 @@ class TwoFragment : Fragment() {
             uri?.let {
                 resolver.openOutputStream(it)?.use { stream ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
-                    Toast.makeText(requireContext(), "Collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "2-Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
                 }
             } ?: run {
                 Toast.makeText(requireContext(), "Failed to create file.", Toast.LENGTH_SHORT).show()
@@ -349,33 +489,42 @@ class TwoFragment : Fragment() {
     }
 
     private fun updateUI() {
-        when (currentCaptureIndex) {
-            0 -> {
-
+        when {
+            isRetakeMode -> {
+                captureButton.text = "Retake Photo ${retakeIndex + 1}"
+            }
+            currentCaptureIndex == 0 -> {
                 captureButton.text = "Capture Photo 1"
-
             }
-            1 -> {
-
+            currentCaptureIndex == 1 -> {
                 captureButton.text = "Capture Photo 2"
-
             }
-            maxCaptures -> {
-
+            currentCaptureIndex >= maxCaptures -> {
                 captureButton.text = "Start Over"
-
             }
         }
 
-        // Show/hide preview views based on current capture
-        previewViews.forEachIndexed { index, previewView ->
-            previewView.visibility = if (index == currentCaptureIndex && currentCaptureIndex < maxCaptures)
-                View.VISIBLE else View.GONE
+        // Show/hide preview views based on current state
+        if (isRetakeMode) {
+            previewViews.forEachIndexed { index, previewView ->
+                previewView.visibility = if (index == retakeIndex) View.VISIBLE else View.GONE
+            }
+        } else {
+            previewViews.forEachIndexed { index, previewView ->
+                previewView.visibility = if (index == currentCaptureIndex && currentCaptureIndex < maxCaptures)
+                    View.VISIBLE else View.GONE
+            }
         }
     }
 
     private fun resetCapture() {
         currentCaptureIndex = 0
+        isRetakeMode = false
+        retakeIndex = -1
+
+        // Hide all dustbin icons
+        hideAllDustbinIcons()
+
         capturedBitmaps.forEach { it.recycle() }
         capturedBitmaps.clear()
 

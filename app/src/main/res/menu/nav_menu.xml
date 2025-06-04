@@ -3,19 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
             <item
-                android:icon="@drawable/frame_2"
                 android:id="@+id/two"
                 android:title="Two"
                 app:showAsAction="never" />
             <item
                 android:id="@+id/three"
                 android:title="Three"
-                android:icon="@drawable/frame_3"
                 app:showAsAction="never" />
             <item
                 android:id="@+id/four"
                 android:title="Four"
-                android:icon="@drawable/frame_4"
                 app:showAsAction="never" />
 
 </menu>

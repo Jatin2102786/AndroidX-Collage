@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".HomeFragment">
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:orientation="vertical"
+      android:padding="12dp"
+      android:gravity="center"
+      android:layout_height="match_parent">
+
+  <com.google.android.material.card.MaterialCardView
+      android:layout_width="200dp"
+      android:layout_height="200dp"
+      android:padding="0dp"
+      app:strokeColor="@color/white"
+    >
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+      >
+      <ImageButton
+          android:id="@+id/frame_two"
+          android:layout_width="200dp"
+          android:layout_height="200dp"
+          android:src="@drawable/two_frame"
+          android:scaleType="fitXY"
+          />
+    </LinearLayout>
+
+  </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:padding="0dp"
+        app:strokeColor="@color/white"
+        >
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          >
+        <ImageButton
+            android:id="@+id/frame_three"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:src="@drawable/three_frame1"
+            android:scaleType="fitXY"
+            />
+      </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:padding="0dp"
+        app:strokeColor="@color/white"
+        >
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          >
+        <ImageButton
+            android:id="@+id/frame_four"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:src="@drawable/four_image"
+            android:scaleType="fitXY"
+            />
+      </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+
+  </LinearLayout>
+</ScrollView>

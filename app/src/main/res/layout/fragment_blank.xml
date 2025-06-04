@@ -1,6 +1,5 @@
 <androidx.constraintlayout.widget.ConstraintLayout  xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -23,28 +22,122 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@+id/captureButton"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        >
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Repeated for 4 views -->
-        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
-            <androidx.camera.view.PreviewView android:id="@+id/preview1" android:layout_width="match_parent" android:layout_height="match_parent"/>
-            <ImageView android:id="@+id/overlay1" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        <!-- Frame 1 with dustbin icon -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:layout_margin="2dp">
+            <androidx.camera.view.PreviewView
+                android:id="@+id/preview1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+            <ImageView
+                android:id="@+id/overlay1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"/>
+            <ImageView
+                android:id="@+id/dustbin1"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                android:background="@drawable/circle_background"
+                android:padding="6dp"
+                android:visibility="gone"
+                android:elevation="8dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp" />
         </FrameLayout>
 
-        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
-            <androidx.camera.view.PreviewView android:id="@+id/preview2" android:layout_width="match_parent" android:layout_height="match_parent"/>
-            <ImageView android:id="@+id/overlay2" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        <!-- Frame 2 with dustbin icon -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:layout_margin="2dp">
+            <androidx.camera.view.PreviewView
+                android:id="@+id/preview2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+            <ImageView
+                android:id="@+id/overlay2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"/>
+            <ImageView
+                android:id="@+id/dustbin2"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                android:background="@drawable/circle_background"
+                android:padding="6dp"
+                android:visibility="gone"
+                android:elevation="8dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp" />
         </FrameLayout>
 
-        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
-            <androidx.camera.view.PreviewView android:id="@+id/preview3" android:layout_width="match_parent" android:layout_height="match_parent"/>
-            <ImageView android:id="@+id/overlay3" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        <!-- Frame 3 with dustbin icon -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:layout_margin="2dp">
+            <androidx.camera.view.PreviewView
+                android:id="@+id/preview3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+            <ImageView
+                android:id="@+id/overlay3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"/>
+            <ImageView
+                android:id="@+id/dustbin3"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                android:background="@drawable/circle_background"
+                android:padding="6dp"
+                android:visibility="gone"
+                android:elevation="8dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp" />
         </FrameLayout>
 
-        <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
-            <androidx.camera.view.PreviewView android:id="@+id/preview4" android:layout_width="match_parent" android:layout_height="match_parent"/>
-            <ImageView android:id="@+id/overlay4" android:layout_width="match_parent" android:layout_height="match_parent"/>
+        <!-- Frame 4 with dustbin icon -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_rowWeight="1"
+            android:layout_columnWeight="1"
+            android:layout_margin="2dp">
+            <androidx.camera.view.PreviewView
+                android:id="@+id/preview4"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+            <ImageView
+                android:id="@+id/overlay4"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"/>
+            <ImageView
+                android:id="@+id/dustbin4"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                android:background="@drawable/circle_background"
+                android:padding="6dp"
+                android:visibility="gone"
+                android:elevation="8dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp" />
         </FrameLayout>
     </GridLayout>
 
@@ -56,6 +149,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="12dp"
-        />
+        android:layout_margin="12dp" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

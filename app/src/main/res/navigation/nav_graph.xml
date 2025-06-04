@@ -3,39 +3,25 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/blankFragment">
+    app:startDestination="@id/homeFragment">
 
-    <fragment
-        android:id="@+id/FirstFragment"
-        android:name="com.o7solutions.task.FirstFragment"
-        android:label="@string/first_fragment_label"
-        tools:layout="@layout/fragment_first">
 
-        <action
-            android:id="@+id/action_FirstFragment_to_SecondFragment"
-            app:destination="@id/SecondFragment" />
-    </fragment>
-    <fragment
-        android:id="@+id/SecondFragment"
-        android:name="com.o7solutions.task.SecondFragment"
-        android:label="@string/second_fragment_label"
-        tools:layout="@layout/fragment_second">
-
-        <action
-            android:id="@+id/action_SecondFragment_to_FirstFragment"
-            app:destination="@id/FirstFragment" />
-    </fragment>
     <fragment
         android:id="@+id/blankFragment"
         android:name="com.o7solutions.task.BlankFragment"
-        android:label="fragment_blank"
+        android:label="Frame 4"
         tools:layout="@layout/fragment_blank" />
     <fragment
         android:id="@+id/threeFragment2"
         android:name="com.o7solutions.task.ThreeFragment2"
-        android:label="ThreeFragment2" />
+        android:label="Frame 3" />
     <fragment
         android:id="@+id/twoFragment"
         android:name="com.o7solutions.task.TwoFragment"
-        android:label="TwoFragment" />
+        android:label="Frame 2" />
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.o7solutions.task.HomeFragment"
+        android:label="Select Frame"
+        tools:layout="@layout/fragment_home" />
 </navigation>

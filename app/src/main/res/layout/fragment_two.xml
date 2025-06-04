@@ -30,11 +30,33 @@
         <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
             <androidx.camera.view.PreviewView android:id="@+id/preview1" android:layout_width="match_parent" android:layout_height="match_parent"/>
             <ImageView android:id="@+id/overlay1" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView
+                android:id="@+id/dustbin1"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                android:background="@drawable/circle_background"
+                android:padding="6dp"
+                android:visibility="gone"
+                android:elevation="8dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp" />
         </FrameLayout>
 
         <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
             <androidx.camera.view.PreviewView android:id="@+id/preview2" android:layout_width="match_parent" android:layout_height="match_parent"/>
             <ImageView android:id="@+id/overlay2" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <ImageView
+                android:id="@+id/dustbin2"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_delete"
+                android:background="@drawable/circle_background"
+                android:padding="6dp"
+                android:elevation="8dp"
+                android:visibility="gone"
+                android:layout_gravity="top|end"
+                android:layout_margin="8dp" />
         </FrameLayout>
 
 
@@ -58,12 +80,6 @@
         />
 
 
-        <Button
-            android:id="@+id/reset_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Capture"
-            android:layout_margin="12dp"
-            />
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
