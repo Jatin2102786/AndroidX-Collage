@@ -10,6 +10,7 @@ import android.graphics.YuvImage
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -62,8 +63,10 @@ class TwoFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
+
             param1 = it.getString(ARG_PARAM1)
             param2 = it.getString(ARG_PARAM2)
+
         }
     }
 
@@ -93,19 +96,40 @@ class TwoFragment : Fragment() {
             previewView.scaleType = PreviewView.ScaleType.FILL_START
         }
 
+
+
         captureButton.setOnClickListener {
-            if (currentCaptureIndex < maxCaptures) {
-                captureImage()
+
+            if (flag) {
+
             } else {
-                resetCapture()
+                if (currentCaptureIndex < maxCaptures) {
+                    captureImage()
+                } else {
+                    resetCapture()
+                }
             }
+
         }
 
-        binding.preview1.setOnClickListener {
-            flag = true
-            updateIndex = 0
-            capturedBitmaps[updateIndex].recycle()
+        binding.overlay1.setOnClickListener {
+            Log.d("Two Fragment", "onViewCreated: Overlay1")
         }
+
+//        binding.preview1.setOnClickListener {
+//            flag = true
+//            updateIndex = 0
+//            capturedBitmaps[updateIndex].recycle()
+//        }
+
+
+
+//        binding.preview1.setOnClickListener {
+//            flag = true
+//            updateIndex = 1
+//            capturedBitmaps[updateIndex].recycle()
+//
+//        }
 
         updateUI()
         startCamera()
@@ -140,12 +164,18 @@ class TwoFragment : Fragment() {
 
         try {
             if(flag) {
+                cameraProvider.unbindAll()
+                // Set preview to current active preview view
+                preview.setSurfaceProvider(previewViews[updateIndex].surfaceProvider)
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
 
+            } else {
+                cameraProvider.unbindAll()
+                // Set preview to current active preview view
+                preview.setSurfaceProvider(previewViews[currentCaptureIndex].surfaceProvider)
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
             }
-            cameraProvider.unbindAll()
-            // Set preview to current active preview view
-            preview.setSurfaceProvider(previewViews[currentCaptureIndex].surfaceProvider)
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Camera binding failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
@@ -196,6 +226,7 @@ class TwoFragment : Fragment() {
     }
 
     private fun switchToNextPreview() {
+
         if (currentCaptureIndex < maxCaptures) {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
             cameraProviderFuture.addListener({
@@ -214,9 +245,11 @@ class TwoFragment : Fragment() {
                 }
             }, ContextCompat.getMainExecutor(requireContext()))
         }
+
     }
 
     private fun convertImageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
+
         return when (imageProxy.format) {
             ImageFormat.JPEG -> {
                 val buffer = imageProxy.planes[0].buffer
@@ -231,9 +264,11 @@ class TwoFragment : Fragment() {
                 throw IllegalArgumentException("Unsupported image format: ${imageProxy.format}")
             }
         }
+
     }
 
     private fun yuv420ToBitmap(imageProxy: ImageProxy): Bitmap {
+
         val yBuffer = imageProxy.planes[0].buffer
         val uBuffer = imageProxy.planes[1].buffer
         val vBuffer = imageProxy.planes[2].buffer
@@ -252,6 +287,7 @@ class TwoFragment : Fragment() {
         yuvImage.compressToJpeg(Rect(0, 0, imageProxy.width, imageProxy.height), 100, out)
         val bytes = out.toByteArray()
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
     }
 
     private fun createAndSaveCollage() {
@@ -315,13 +351,19 @@ class TwoFragment : Fragment() {
     private fun updateUI() {
         when (currentCaptureIndex) {
             0 -> {
+
                 captureButton.text = "Capture Photo 1"
+
             }
             1 -> {
+
                 captureButton.text = "Capture Photo 2"
+
             }
             maxCaptures -> {
+
                 captureButton.text = "Start Over"
+
             }
         }
 
