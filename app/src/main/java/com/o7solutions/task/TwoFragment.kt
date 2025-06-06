@@ -27,6 +27,8 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.o7solutions.task.database.DatabaseDB
+import com.o7solutions.task.database.ImageEntity
 import com.o7solutions.task.databinding.FragmentTwoBinding
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -52,6 +54,7 @@ class TwoFragment : Fragment() {
     private lateinit var dustbinIcons: List<ImageView> // Add dustbin icons list
     private lateinit var captureButton: Button
 
+    private lateinit var db: DatabaseDB
     private var imageCapture: ImageCapture? = null
     private val capturedBitmaps = mutableListOf<Bitmap>()
     private lateinit var binding: FragmentTwoBinding
@@ -80,6 +83,7 @@ class TwoFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        db = DatabaseDB.getInstance(requireContext())
         previewViews = listOf(
             view.findViewById(R.id.preview1),
             view.findViewById(R.id.preview2)
@@ -478,6 +482,7 @@ class TwoFragment : Fragment() {
             uri?.let {
                 resolver.openOutputStream(it)?.use { stream ->
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+                    db.databaseDao().insertImage(ImageEntity(name= filename, path = it.toString(), timeStamp = System.currentTimeMillis()))
                     Toast.makeText(requireContext(), "2-Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
                 }
             } ?: run {

@@ -6,7 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
-import com.o7solutions.task.databinding.FragmentHomeBinding
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.viewbinding.ViewBinding
+import com.o7solutions.task.database.DatabaseDB
+import com.o7solutions.task.database.ImageEntity
+import com.o7solutions.task.databinding.FragmentSavedListBinding
+import io.appwrite.Client
+import io.appwrite.services.Storage
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -15,48 +21,61 @@ private const val ARG_PARAM2 = "param2"
 
 /**
  * A simple [Fragment] subclass.
- * Use the [HomeFragment.newInstance] factory method to
+ * Use the [SavedListFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-class HomeFragment : Fragment() {
+class SavedListFragment : Fragment(), ImageListAdapter.OnItemClick {
     // TODO: Rename and change types of parameters
     private var param1: String? = null
     private var param2: String? = null
-    private lateinit var binding: FragmentHomeBinding
+    private lateinit var binding: FragmentSavedListBinding
+    private lateinit var adapter: ImageListAdapter
+    private var list: ArrayList<ImageEntity> = ArrayList()
+    private lateinit var db: DatabaseDB
+    lateinit var storage: Storage
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
         arguments?.let {
             param1 = it.getString(ARG_PARAM1)
             param2 = it.getString(ARG_PARAM2)
         }
     }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
-        binding = FragmentHomeBinding.inflate(layoutInflater)
+        binding = FragmentSavedListBinding.inflate(layoutInflater)
         return binding.root
     }
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.frameTwo.setOnClickListener {
-            findNavController().navigate(R.id.twoFragment)
-        }
-        binding.frameThree.setOnClickListener {
-            findNavController().navigate(R.id.threeFragment2)
-        }
-        binding.frameFour.setOnClickListener {
-            findNavController().navigate(R.id.blankFragment)
-        }
-        binding.visitBtn.setOnClickListener {
-            findNavController().navigate(R.id.savedListFragment)
+
+        db = DatabaseDB.getInstance(requireContext())
+        list = db.databaseDao().getAllImages() as ArrayList<ImageEntity>
+
+        binding.apply {
+
+            recyclerView.layoutManager = LinearLayoutManager(requireContext())
+            recyclerView.adapter = ImageListAdapter(list,this@SavedListFragment)
         }
     }
+
+    override fun onItemClick(position: Int) {
+
+        val bundle = Bundle()
+        bundle.putString("uri",list[position].path)
+        findNavController().navigate(R.id.viewFragment,bundle)
+    }
+
+    override fun upload(position: Int) {
+    }
+
 
     companion object {
         /**
@@ -65,12 +84,12 @@ class HomeFragment : Fragment() {
          *
          * @param param1 Parameter 1.
          * @param param2 Parameter 2.
-         * @return A new instance of fragment HomeFragment.
+         * @return A new instance of fragment SavedListFragment.
          */
         // TODO: Rename and change types and number of parameters
         @JvmStatic
         fun newInstance(param1: String, param2: String) =
-            HomeFragment().apply {
+            SavedListFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_PARAM1, param1)
                     putString(ARG_PARAM2, param2)

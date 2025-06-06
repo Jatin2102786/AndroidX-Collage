@@ -24,4 +24,14 @@
         android:name="com.o7solutions.task.HomeFragment"
         android:label="Select Frame"
         tools:layout="@layout/fragment_home" />
+    <fragment
+        android:id="@+id/viewFragment"
+        android:name="com.o7solutions.task.ViewFragment"
+        android:label="View"
+        tools:layout="@layout/fragment_view" />
+    <fragment
+        android:id="@+id/savedListFragment"
+        android:name="com.o7solutions.task.SavedListFragment"
+        android:label="Saved Images"
+        tools:layout="@layout/fragment_saved_list" />
 </navigation>
