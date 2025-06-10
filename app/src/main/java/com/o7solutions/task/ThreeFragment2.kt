@@ -320,10 +320,14 @@ class ThreeFragment2 : Fragment() {
                         if (currentCaptureIndex < maxCaptures) {
                             // Switch to next preview view
                             switchToNextPreview()
-                        } else {
-                            createAndSaveCollage()
-                        }
+                            binding.saveButton.visibility = View.GONE
 
+                        } else {
+                            binding.saveButton.visibility = View.VISIBLE
+                            binding.saveButton.setOnClickListener {
+                                createAndSaveCollage()
+                            }
+                        }
                         updateUI()
                     } catch (e: Exception) {
                         Toast.makeText(requireContext(), "Image processing failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -476,6 +480,7 @@ class ThreeFragment2 : Fragment() {
             }
             currentCaptureIndex >= maxCaptures -> {
                 captureButton.text = "Start Over"
+
 //                progressText.text = "All photos captured! Collage saved."
             }
         }

@@ -326,8 +326,13 @@ class BlankFragment : Fragment() {
                         if (currentCaptureIndex < maxCaptures) {
                             // Switch to next preview view
                             switchToNextPreview()
+                            binding.saveButton.visibility = View.GONE
+
                         } else {
-                            createAndSaveCollage()
+                            binding.saveButton.visibility = View.VISIBLE
+                            binding.saveButton.setOnClickListener {
+                                createAndSaveCollage()
+                            }
                         }
 
                         updateUI()
@@ -487,6 +492,7 @@ class BlankFragment : Fragment() {
             }
             currentCaptureIndex >= maxCaptures -> {
                 captureButton.text = "Start Over"
+
             }
         }
 

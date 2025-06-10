@@ -82,6 +82,7 @@ class ViewFragment : Fragment() {
 
         binding.uploadButton.setOnClickListener {
 
+            binding.progressBar.visibility = View.VISIBLE
             val file = uriToFile(Uri.parse(imageUri))
             file?.let {
                 viewLifecycleOwner.lifecycleScope.launch {
@@ -169,13 +170,15 @@ class ViewFragment : Fragment() {
         val dialog = AlertDialog.Builder(context)
             .setView(dialogView)
             .setCancelable(false)
-            .setPositiveButton("Share") { _, _ ->
-//                shareBitmap(context, bitmap)
-            }
+//            .setPositiveButton("Share") { _, _ ->
+////                shareBitmap(context, bitmap)
+//            }
             .setNegativeButton("OK") { dialogInterface, _ ->
                 dialogInterface.dismiss()
             }
             .create()
+
+        binding.progressBar.visibility = View.GONE
 
         dialog.show()
     }

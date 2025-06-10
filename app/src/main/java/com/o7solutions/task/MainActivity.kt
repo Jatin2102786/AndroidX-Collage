@@ -38,13 +38,21 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         binding.fab.setOnClickListener { view ->
-//            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                .setAction("Action", null)
-//                .setAnchorView(R.id.fab).show()
 
             showPopupMenu(view)
         }
 
+
+//        navController.addOnDestinationChangedListener { _, destination, _ ->
+    //            when (destination.id) {
+    //                R.id.threeFragment2, R.id.twoFragment, R.id.blankFragment -> {
+//                    binding.fab.visibility = View.VISIBLE
+//                }
+//                else -> {
+//                    binding.fab.visibility = View.GONE
+//                }
+//            }
+//        }
         // Check for overlay permission
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 //            if (!Settings.canDrawOverlays(this)) {
@@ -61,21 +69,21 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.nav_menu,menu)
-        return super.onCreateOptionsMenu(menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        when (item.itemId){
-            R.id.two -> navController.navigate(R.id.twoFragment)
-            R.id.three -> navController.navigate(R.id.threeFragment2)
-            R.id.four -> navController.navigate(R.id.blankFragment)
-        }
-        return super.onOptionsItemSelected(item)
-    }
+//    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+//        menuInflater.inflate(R.menu.nav_menu,menu)
+//        return super.onCreateOptionsMenu(menu)
+//    }
+//
+//    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+//
+//        val navController = findNavController(R.id.nav_host_fragment_content_main)
+//        when (item.itemId){
+//            R.id.two -> navController.navigate(R.id.twoFragment)
+//            R.id.three -> navController.navigate(R.id.threeFragment2)
+//            R.id.four -> navController.navigate(R.id.blankFragment)
+//        }
+//        return super.onOptionsItemSelected(item)
+//    }
 
 
 
@@ -89,18 +97,19 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.three -> {
                     navController.navigate(R.id.threeFragment2)
+                    navController.popBackStack()
                     true
                 }
                 R.id.two -> {
                     navController.navigate(R.id.twoFragment)
-//                    Toast.makeText(this, "Option 2 clicked", Toast.LENGTH_SHORT).show()
-                    // Add your action for Option 2 here
+                    navController.popBackStack()
+
                     true
                 }
                 R.id.four -> {
                     navController.navigate(R.id.blankFragment)
-//                    Toast.makeText(this, "Option 3 clicked", Toast.LENGTH_SHORT).show()
-                    // Add your action for Option 3 here
+                    navController.popBackStack()
+
                     true
                 }
                 else -> false

@@ -1,91 +1,175 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="@color/white"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".HomeFragment">
 
-  <LinearLayout
+  <androidx.constraintlayout.widget.ConstraintLayout
       android:layout_width="match_parent"
-      android:orientation="vertical"
-      android:padding="12dp"
-      android:gravity="center"
-      android:layout_height="match_parent">
-
-  <com.google.android.material.card.MaterialCardView
-      android:layout_width="200dp"
-      android:layout_height="200dp"
-      android:padding="0dp"
-      app:strokeColor="@color/white"
-    >
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-      >
-      <ImageButton
-          android:id="@+id/frame_two"
-          android:layout_width="200dp"
-          android:layout_height="200dp"
-          android:src="@drawable/two_frame"
-          android:scaleType="fitXY"
-          />
-    </LinearLayout>
-
-  </com.google.android.material.card.MaterialCardView>
+      android:layout_height="match_parent"
+      android:paddingBottom="12dp"
+      android:layout_marginBottom="12dp">
 
     <com.google.android.material.card.MaterialCardView
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:padding="0dp"
+        android:id="@+id/card_frame_two"
+        android:layout_width="0dp"
+        android:layout_height="250dp"
         app:strokeColor="@color/white"
-        >
+        app:strokeWidth="0dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#EDEDED"
+        android:layout_margin="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/card_frame_three"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginEnd="4dp">
+
       <LinearLayout
           android:layout_width="match_parent"
-          android:layout_height="match_parent"
-          >
+          android:layout_height="wrap_content"
+          android:orientation="vertical">
+
+        <ImageButton
+            android:id="@+id/frame_two"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:src="@drawable/two_frame"
+            android:scaleType="fitXY"
+            android:background="@null" />
+
+        <TextView
+            android:id="@+id/text_frame_two"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Frame Two"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            android:padding="4dp" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_frame_three"
+        android:layout_width="0dp"
+        android:layout_height="250dp"
+        app:strokeWidth="0dp"
+        app:cardBackgroundColor="#EDEDED"
+        app:strokeColor="@color/white"
+        app:cardElevation="4dp"
+        android:layout_margin="12dp"
+        app:layout_constraintStart_toEndOf="@id/card_frame_two"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="4dp">
+
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical">
+
         <ImageButton
             android:id="@+id/frame_three"
-            android:layout_width="200dp"
+            android:layout_width="match_parent"
             android:layout_height="200dp"
             android:src="@drawable/three_frame1"
             android:scaleType="fitXY"
-            />
-      </LinearLayout>
+            android:background="@null" />
 
+        <TextView
+            android:id="@+id/text_frame_three"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Frame Three"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            android:padding="4dp" />
+      </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-
     <com.google.android.material.card.MaterialCardView
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:padding="0dp"
+        android:id="@+id/card_frame_four"
+        android:layout_width="0dp"
+        android:layout_height="250dp"
         app:strokeColor="@color/white"
-        >
+        app:cardElevation="4dp"
+        app:strokeWidth="0dp"
+        app:cardBackgroundColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@id/card_frame_two"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/visit_btn"
+        android:layout_marginTop="16dp"
+        android:layout_margin="12dp"
+        android:layout_marginEnd="4dp">
+
       <LinearLayout
           android:layout_width="match_parent"
-          android:layout_height="match_parent"
-          >
+          android:layout_height="wrap_content"
+          android:orientation="vertical">
+
         <ImageButton
             android:id="@+id/frame_four"
-            android:layout_width="200dp"
+            android:layout_width="match_parent"
             android:layout_height="200dp"
             android:src="@drawable/four_image"
             android:scaleType="fitXY"
-            />
-      </LinearLayout>
+            android:background="@color/black" />
 
+        <TextView
+            android:id="@+id/text_frame_four"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Frame Four"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            android:padding="4dp" />
+      </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-
-    <com.google.android.material.button.MaterialButton
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/visit_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Saved images"
-        android:layout_marginTop="10dp"
-      />
+        android:layout_width="0dp"
+        android:layout_height="250dp"
+        app:cardCornerRadius="8dp"
+        app:strokeColor="@color/white"
+        app:cardElevation="4dp"
+        android:layout_margin="12dp"
+        app:cardBackgroundColor="@color/white"
+        app:layout_constraintTop_toBottomOf="@id/card_frame_three"
+        app:layout_constraintStart_toEndOf="@id/card_frame_four"
+        app:layout_constraintEnd_toEndOf="parent">
 
-  </LinearLayout>
-</ScrollView>
+      <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="20dp"
+          android:orientation="vertical">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="180dp"
+            android:src="@drawable/gallery_icon"
+            android:scaleType="fitCenter"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+
+
+             />
+
+        <TextView
+            android:id="@+id/text_saved_images"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Saved Images"
+            android:textAlignment="center"
+            android:textSize="16sp"
+            android:padding="4dp" />
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+  </androidx.constraintlayout.widget.ConstraintLayout>
+
+</LinearLayout>

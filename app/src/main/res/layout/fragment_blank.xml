@@ -20,7 +20,7 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/captureButton"
+        app:layout_constraintBottom_toTopOf="@+id/buttonLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -42,8 +42,8 @@
                 android:scaleType="centerCrop"/>
             <ImageView
                 android:id="@+id/dustbin1"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_delete"
                 android:background="@drawable/circle_background"
                 android:padding="6dp"
@@ -141,14 +141,34 @@
         </FrameLayout>
     </GridLayout>
 
-    <Button
-        android:id="@+id/captureButton"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/buttonLayout"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Capture"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_margin="12dp" />
+        >
+        <Button
+            android:id="@+id/captureButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Capture"
+            android:layout_margin="12dp"
+            />
 
+        <Button
+            android:id="@+id/saveButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save"
+            android:visibility="gone"
+            android:layout_margin="12dp"
+            />
+
+
+
+
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

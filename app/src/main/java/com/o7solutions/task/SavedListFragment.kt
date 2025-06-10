@@ -58,6 +58,7 @@ class SavedListFragment : Fragment(), ImageListAdapter.OnItemClick {
 
         db = DatabaseDB.getInstance(requireContext())
         list = db.databaseDao().getAllImages() as ArrayList<ImageEntity>
+        list.reverse()
 
         binding.apply {
 
