@@ -38,21 +38,9 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         binding.fab.setOnClickListener { view ->
-
             showPopupMenu(view)
         }
 
-
-//        navController.addOnDestinationChangedListener { _, destination, _ ->
-    //            when (destination.id) {
-    //                R.id.threeFragment2, R.id.twoFragment, R.id.blankFragment -> {
-//                    binding.fab.visibility = View.VISIBLE
-//                }
-//                else -> {
-//                    binding.fab.visibility = View.GONE
-//                }
-//            }
-//        }
         // Check for overlay permission
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 //            if (!Settings.canDrawOverlays(this)) {
@@ -63,36 +51,36 @@ class MainActivity : AppCompatActivity() {
 //                assistiveTouchManager.startAssistiveTouch()
 //            }
 //        } else {
+//            // For devices below Android M, permission is granted at install time
+//            assistiveTouchManager.startAssistiveTouch()
 //        }
-
-//        assistiveTouchManager.startAssistiveTouch()
-
     }
 
-//    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-//        menuInflater.inflate(R.menu.nav_menu,menu)
-//        return super.onCreateOptionsMenu(menu)
-//    }
-//
-//    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-//
-//        val navController = findNavController(R.id.nav_host_fragment_content_main)
-//        when (item.itemId){
-//            R.id.two -> navController.navigate(R.id.twoFragment)
-//            R.id.three -> navController.navigate(R.id.threeFragment2)
-//            R.id.four -> navController.navigate(R.id.blankFragment)
-//        }
-//        return super.onOptionsItemSelected(item)
-//    }
-
-
+    // This method handles the result of the permission request
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    // Permission granted, start the assistive touch service
+                    assistiveTouchManager.startAssistiveTouch()
+                } else {
+                    // Permission denied, show a toast message
+                    Toast.makeText(
+                        this,
+                        "Overlay permission denied. Unable to create collages.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
 
     private fun showPopupMenu(view: View) {
         val popupMenu = PopupMenu(this, view) // 'this' is context, 'view' is anchor
         popupMenu.menuInflater.inflate(R.menu.nav_menu, popupMenu.menu) // Inflate your new menu
 
         popupMenu.setOnMenuItemClickListener { item ->
-
             val navController = findNavController(R.id.nav_host_fragment_content_main)
             when (item.itemId) {
                 R.id.three -> {
@@ -103,13 +91,11 @@ class MainActivity : AppCompatActivity() {
                 R.id.two -> {
                     navController.navigate(R.id.twoFragment)
                     navController.popBackStack()
-
                     true
                 }
                 R.id.four -> {
                     navController.navigate(R.id.blankFragment)
                     navController.popBackStack()
-
                     true
                 }
                 else -> false
@@ -117,10 +103,10 @@ class MainActivity : AppCompatActivity() {
         }
         popupMenu.show() // Display the pop-up menu
     }
+
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 
     companion object {

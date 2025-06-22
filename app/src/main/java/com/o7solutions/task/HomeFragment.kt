@@ -53,9 +53,9 @@ class HomeFragment : Fragment() {
         binding.frameFour.setOnClickListener {
             findNavController().navigate(R.id.blankFragment)
         }
-        binding.visitBtn.setOnClickListener {
-            findNavController().navigate(R.id.savedListFragment)
-        }
+//        binding.visitBtn.setOnClickListener {
+//            findNavController().navigate(R.id.savedListFragment)
+//        }
     }
 
     companion object {

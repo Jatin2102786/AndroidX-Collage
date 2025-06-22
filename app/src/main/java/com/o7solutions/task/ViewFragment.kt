@@ -8,11 +8,11 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.google.zxing.BarcodeFormat
@@ -29,22 +29,12 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [ViewFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class ViewFragment : Fragment() {
-    // TODO: Rename and change types of parameters
+
     private var param1: String? = null
     private var param2: String? = null
     private lateinit var binding: FragmentViewBinding
-    private var imageUri = " "
+    private var imageUri = ""
     lateinit var storage: Storage
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,20 +45,20 @@ class ViewFragment : Fragment() {
             .setProject("683ff28300274cce44da")
 
         storage = Storage(client)
+
         arguments?.let {
-            imageUri = it.getString("uri","")
+            imageUri = it.getString("uri", "") ?: ""
             param1 = it.getString(ARG_PARAM1)
             param2 = it.getString(ARG_PARAM2)
         }
+
+        Log.d("ViewFragment", "Received imageUri: $imageUri")
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-//        return inflater.inflate(R.layout.fragment_view, container, false)
-
+    ): View {
         binding = FragmentViewBinding.inflate(layoutInflater)
         return binding.root
     }
@@ -81,18 +71,23 @@ class ViewFragment : Fragment() {
             .into(binding.imageView)
 
         binding.uploadButton.setOnClickListener {
-
             binding.progressBar.visibility = View.VISIBLE
-            val file = uriToFile(Uri.parse(imageUri))
-            file?.let {
+
+            val uri = Uri.parse(imageUri)
+            val file = uriToFile(uri)
+
+            if (file != null && file.exists()) {
+                Log.d("Upload", "File exists: ${file.absolutePath}")
                 viewLifecycleOwner.lifecycleScope.launch {
-                    uploadImage(it)
+                    uploadImage(file)
                 }
+            } else {
+                Log.e("Upload", "File is null or doesn't exist")
+                binding.progressBar.visibility = View.GONE
             }
         }
 
         binding.shareButton.setOnClickListener {
-
             val sendIntent = Intent().apply {
                 action = Intent.ACTION_SEND
                 putExtra(Intent.EXTRA_STREAM, Uri.parse(imageUri))
@@ -104,6 +99,7 @@ class ViewFragment : Fragment() {
             startActivity(shareIntent)
         }
     }
+
     private suspend fun uploadImage(file: File) {
         try {
             val response = storage.createFile(
@@ -115,8 +111,8 @@ class ViewFragment : Fragment() {
             val fileUrl =
                 "https://cloud.appwrite.io/v1/storage/buckets/683ff2db001cc7f21dfb/files/${response.id}/view?project=683ff28300274cce44da&mode=admin"
 
-            Log.d("View Fragment",fileUrl)
-            showImageDialog(requireContext(),encodeAsBitmap(fileUrl, 500, 500))
+            Log.d("View Fragment", fileUrl)
+            showImageDialog(requireContext(), encodeAsBitmap(fileUrl, 500, 500))
             Log.d("Appwrite", "File uploaded successfully: ${response.id}")
         } catch (e: AppwriteException) {
             Log.e("Appwrite", "Upload failed: ${e.message}")
@@ -131,14 +127,18 @@ class ViewFragment : Fragment() {
                     inputStream.copyTo(outputStream)
                 }
             }
-//            uploadImage(file)
-            file
+            if (file.exists()) {
+                Log.d("ImagePicker", "File created: ${file.absolutePath}")
+                file
+            } else {
+                Log.e("ImagePicker", "File doesn't exist after copy.")
+                null
+            }
         } catch (e: Exception) {
             Log.e("ImagePicker", "Error converting URI to file: ${e.message}")
             null
         }
     }
-
 
     @Throws(WriterException::class)
     fun encodeAsBitmap(str: String, width: Int, height: Int): Bitmap {
@@ -160,46 +160,34 @@ class ViewFragment : Fragment() {
         return bitmap
     }
 
-
     fun showImageDialog(context: Context, bitmap: Bitmap) {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_image_view, null)
-
         val imageView = dialogView.findViewById<ImageView>(R.id.imageView)
         imageView.setImageBitmap(bitmap)
 
         val dialog = AlertDialog.Builder(context)
             .setView(dialogView)
             .setCancelable(false)
-//            .setPositiveButton("Share") { _, _ ->
-////                shareBitmap(context, bitmap)
-//            }
             .setNegativeButton("OK") { dialogInterface, _ ->
                 dialogInterface.dismiss()
             }
             .create()
 
         binding.progressBar.visibility = View.GONE
-
         dialog.show()
     }
 
-
     companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment ViewFragment.
-         */
-        // TODO: Rename and change types and number of parameters
+        private const val ARG_PARAM1 = "param1"
+        private const val ARG_PARAM2 = "param2"
+
         @JvmStatic
-        fun newInstance(param1: String, param2: String) =
+        fun newInstance(param1: String, param2: String, uri: String) =
             ViewFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_PARAM1, param1)
                     putString(ARG_PARAM2, param2)
+                    putString("uri", uri)
                 }
             }
     }

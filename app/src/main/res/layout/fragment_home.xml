@@ -96,15 +96,15 @@
         android:layout_height="250dp"
         app:strokeColor="@color/white"
         app:cardElevation="4dp"
-        app:strokeWidth="0dp"
+        app:layout_constraintEnd_toEndOf="@id/card_frame_two"
+        app:flow_horizontalBias="0.5"
         app:cardBackgroundColor="@color/white"
         app:layout_constraintTop_toBottomOf="@id/card_frame_two"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/visit_btn"
         android:layout_marginTop="16dp"
-        android:layout_margin="12dp"
-        android:layout_marginEnd="4dp">
+        android:layout_marginStart="16dp"
 
+      >
       <LinearLayout
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
@@ -129,46 +129,46 @@
       </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/visit_btn"
-        android:layout_width="0dp"
-        android:layout_height="250dp"
-        app:cardCornerRadius="8dp"
-        app:strokeColor="@color/white"
-        app:cardElevation="4dp"
-        android:layout_margin="12dp"
-        app:cardBackgroundColor="@color/white"
-        app:layout_constraintTop_toBottomOf="@id/card_frame_three"
-        app:layout_constraintStart_toEndOf="@id/card_frame_four"
-        app:layout_constraintEnd_toEndOf="parent">
+<!--    <com.google.android.material.card.MaterialCardView-->
+<!--        android:id="@+id/visit_btn"-->
+<!--        android:layout_width="0dp"-->
+<!--        android:layout_height="250dp"-->
+<!--        app:cardCornerRadius="8dp"-->
+<!--        app:strokeColor="@color/white"-->
+<!--        app:cardElevation="4dp"-->
+<!--        android:layout_margin="12dp"-->
+<!--        app:cardBackgroundColor="@color/white"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/card_frame_three"-->
+<!--        app:layout_constraintStart_toEndOf="@id/card_frame_four"-->
+<!--        app:layout_constraintEnd_toEndOf="parent">-->
 
-      <LinearLayout
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:paddingTop="20dp"
-          android:orientation="vertical">
+<!--      <LinearLayout-->
+<!--          android:layout_width="match_parent"-->
+<!--          android:layout_height="wrap_content"-->
+<!--          android:paddingTop="20dp"-->
+<!--          android:orientation="vertical">-->
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="180dp"
-            android:src="@drawable/gallery_icon"
-            android:scaleType="fitCenter"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
+<!--        <ImageView-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="180dp"-->
+<!--            android:src="@drawable/gallery_icon"-->
+<!--            android:scaleType="fitCenter"-->
+<!--            android:layout_marginStart="20dp"-->
+<!--            android:layout_marginEnd="20dp"-->
 
 
-             />
+<!--             />-->
 
-        <TextView
-            android:id="@+id/text_saved_images"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Saved Images"
-            android:textAlignment="center"
-            android:textSize="16sp"
-            android:padding="4dp" />
-      </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+<!--        <TextView-->
+<!--            android:id="@+id/text_saved_images"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Saved Images"-->
+<!--            android:textAlignment="center"-->
+<!--            android:textSize="16sp"-->
+<!--            android:padding="4dp" />-->
+<!--      </LinearLayout>-->
+<!--    </com.google.android.material.card.MaterialCardView>-->
 
   </androidx.constraintlayout.widget.ConstraintLayout>
 

@@ -178,6 +178,8 @@ class ThreeFragment2 : Fragment() {
                 val cameraProvider = cameraProviderFuture.get()
                 setupCamera(cameraProvider)
             } catch (e: Exception) {
+
+//                Toast.makeText(requireContext(), "", Toast.LENGTH_SHORT).show()
                 Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))

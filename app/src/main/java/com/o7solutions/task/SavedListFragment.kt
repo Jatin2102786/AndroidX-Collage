@@ -65,6 +65,10 @@ class SavedListFragment : Fragment(), ImageListAdapter.OnItemClick {
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = ImageListAdapter(list,this@SavedListFragment)
         }
+
+        if (list.isEmpty) {
+            binding.replaceText.visibility = View.VISIBLE
+        }
     }
 
     override fun onItemClick(position: Int) {

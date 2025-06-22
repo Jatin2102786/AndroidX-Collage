@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/background"
+    tools:context=".StartFragment">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/start_button"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="20dp"
+        app:strokeColor="@color/white"
+        app:cardElevation="20dp"
+        >
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="top|center"
+            >
+            <ImageView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_marginTop="10dp"
+                android:src="@drawable/collage"
+                />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Start"
+                android:textColor="@color/black"
+                android:textSize="20sp"
+                android:textAlignment="center"
+                />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="150dp"
+        android:id="@+id/saved_images"
+        android:layout_height="150dp"
+        app:cardBackgroundColor="@color/white"
+        app:cardCornerRadius="20dp"
+        android:layout_marginTop="20dp"
+        app:strokeColor="@color/white"
+        app:cardElevation="20dp"
+        >
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="top|center"
+            >
+            <ImageView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_marginTop="10dp"
+                android:src="@drawable/gallery_icon"
+                />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Saved"
+                android:textColor="@color/black"
+                android:textSize="20sp"
+                android:textAlignment="center"
+                />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+
+</LinearLayout>
