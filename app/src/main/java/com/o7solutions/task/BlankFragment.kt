@@ -3,6 +3,7 @@ package com.o7solutions.task
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.*
 import android.net.Uri
@@ -29,18 +30,24 @@ import com.o7solutions.task.databinding.FragmentBlankBinding
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.nio.ByteBuffer
 
 class BlankFragment : Fragment() {
 
     private lateinit var previewViews: List<PreviewView>
     private lateinit var imageOverlays: List<ImageView>
-    private lateinit var dustbinIcons: List<ImageView> // Add dustbin icons list
+    private lateinit var dustbinIcons: List<ImageView>
     private lateinit var captureButton: Button
 
     private lateinit var db: DatabaseDB
     private var imageCapture: ImageCapture? = null
+
+    // Updated to handle both camera and gallery images
+    private val imageSources = mutableListOf<ImageSource>() // Track source of each image
     private val capturedBitmaps = mutableListOf<Bitmap>()
+    private val galleryUris = mutableListOf<Uri?>()
+
     private lateinit var binding: FragmentBlankBinding
 
     private var currentCaptureIndex = 0
@@ -48,7 +55,14 @@ class BlankFragment : Fragment() {
     private var isRetakeMode = false
     private var retakeFlag = false
     private var retakeIndex = -1
+    private var setImageIndex = 0
 
+    // Enum to track image source
+    enum class ImageSource {
+        CAMERA,
+        GALLERY,
+        EMPTY
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentBlankBinding.inflate(inflater, container, false)
@@ -59,6 +73,26 @@ class BlankFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         db = DatabaseDB.getInstance(requireContext())
+
+        // Initialize lists
+        initializeLists()
+
+        // Set up gallery button listeners
+        binding.addImageBtn1.setOnClickListener {
+            openGallery(0)
+        }
+
+        binding.addImageBtn2.setOnClickListener {
+            openGallery(1)
+        }
+
+        binding.addImageBtn3.setOnClickListener {
+            openGallery(2)
+        }
+
+        binding.addImageBtn4.setOnClickListener {
+            openGallery(3)
+        }
 
         previewViews = listOf(
             view.findViewById(R.id.preview1),
@@ -73,7 +107,6 @@ class BlankFragment : Fragment() {
             view.findViewById(R.id.overlay4)
         )
 
-        // Initialize dustbin icons - you need to add these ImageViews to your layout
         dustbinIcons = listOf(
             view.findViewById(R.id.dustbin1),
             view.findViewById(R.id.dustbin2),
@@ -92,7 +125,9 @@ class BlankFragment : Fragment() {
             if (isRetakeMode) {
                 retakeImage()
             } else {
-                if (currentCaptureIndex < maxCaptures) {
+                val nextCameraIndex = getNextCameraSlotIndex()
+                if (nextCameraIndex != -1) {
+                    currentCaptureIndex = nextCameraIndex
                     captureImage()
                 } else {
                     resetCapture()
@@ -110,13 +145,45 @@ class BlankFragment : Fragment() {
         startCamera()
     }
 
+    private fun initializeLists() {
+        // Initialize with empty slots
+        repeat(maxCaptures) {
+            imageSources.add(ImageSource.EMPTY)
+            galleryUris.add(null)
+        }
+    }
+
+    private fun openGallery(index: Int) {
+        if (retakeFlag) {
+            Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        setImageIndex = index
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        imagePickerLauncher.launch(intent)
+    }
+
+    private fun getNextCameraSlotIndex(): Int {
+        for (i in 0 until maxCaptures) {
+            if (imageSources[i] == ImageSource.EMPTY) {
+                return i
+            }
+        }
+        return -1 // All slots filled
+    }
+
+    private fun getTotalImageCount(): Int {
+        return imageSources.count { it != ImageSource.EMPTY }
+    }
+
     private fun setupLongPressListeners() {
         imageOverlays.forEachIndexed { index, imageView ->
             imageView.setOnLongClickListener {
                 if (retakeFlag) {
                     Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
                     false
-                } else if (capturedBitmaps.size > index) {
+                } else if (imageSources[index] != ImageSource.EMPTY) {
                     showDustbinIcon(index)
                     true
                 } else {
@@ -129,21 +196,15 @@ class BlankFragment : Fragment() {
     private fun setupDustbinClickListeners() {
         dustbinIcons.forEachIndexed { index, dustbinIcon ->
             dustbinIcon.setOnClickListener {
-                // Hide the dustbin icon
                 hideDustbinIcon(index)
-                // Start retake mode for this image
                 startRetakeMode(index)
             }
         }
     }
 
     private fun showDustbinIcon(index: Int) {
-        // Hide all other dustbin icons first
         dustbinIcons.forEach { it.visibility = View.GONE }
-
-        // Show the dustbin icon for the selected image
         dustbinIcons[index].visibility = View.VISIBLE
-
         Toast.makeText(requireContext(), "Tap dustbin to retake photo ${index + 1}", Toast.LENGTH_SHORT).show()
     }
 
@@ -160,29 +221,39 @@ class BlankFragment : Fragment() {
         retakeIndex = index
         retakeFlag = true
 
-        // Hide all dustbin icons
         hideAllDustbinIcons()
 
-        // Recycle the old bitmap to free memory
-        if (capturedBitmaps.size > index) {
-            capturedBitmaps[index].recycle()
-        }
-
-        // Hide the overlay for the image being retaken
-        imageOverlays[index].visibility = View.GONE
-        imageOverlays[index].setImageBitmap(null)
+        // Clear the image at this index
+        clearImageAtIndex(index)
 
         // Show the preview for the specific index
         previewViews.forEachIndexed { i, previewView ->
             previewView.visibility = if (i == index) View.VISIBLE else View.GONE
         }
 
-        // Update camera to show preview for the retake index
         setupCameraForRetake()
-
         updateUI()
 
         Toast.makeText(requireContext(), "Retaking photo ${index + 1}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun clearImageAtIndex(index: Int) {
+        // Clear bitmap if it's a camera image
+        if (imageSources[index] == ImageSource.CAMERA && index < capturedBitmaps.size) {
+            capturedBitmaps[index].recycle()
+        }
+
+        // Clear gallery URI
+        if (index < galleryUris.size) {
+            galleryUris[index] = null
+        }
+
+        // Reset source
+        imageSources[index] = ImageSource.EMPTY
+
+        // Clear overlay
+        imageOverlays[index].visibility = View.GONE
+        imageOverlays[index].setImageBitmap(null)
     }
 
     private fun setupCameraForRetake() {
@@ -210,21 +281,20 @@ class BlankFragment : Fragment() {
                         val bitmap = convertImageProxyToBitmap(imageProxy)
                         imageProxy.close()
 
-                        // Replace the bitmap at the retake index
-                        if (capturedBitmaps.size > retakeIndex) {
-                            capturedBitmaps[retakeIndex] = bitmap
-                        } else {
-                            // This should not happen, but handle gracefully
-                            capturedBitmaps.add(bitmap)
+                        // Store the bitmap at the retake index
+                        while (capturedBitmaps.size <= retakeIndex) {
+                            capturedBitmaps.add(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
                         }
+                        capturedBitmaps[retakeIndex] = bitmap
+
+                        // Update source tracking
+                        imageSources[retakeIndex] = ImageSource.CAMERA
 
                         // Update the overlay
                         imageOverlays[retakeIndex].setImageBitmap(bitmap)
                         imageOverlays[retakeIndex].visibility = View.VISIBLE
 
-                        // Exit retake mode
                         exitRetakeMode()
-
                         updateUI()
                     } catch (e: Exception) {
                         Toast.makeText(requireContext(), "Image processing failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -247,15 +317,18 @@ class BlankFragment : Fragment() {
         retakeIndex = -1
         retakeFlag = false
 
-        // Hide all dustbin icons
         hideAllDustbinIcons()
 
-        // If all images are captured, show the "Start Over" state
-        if (currentCaptureIndex >= maxCaptures) {
-            // Hide all preview views
+        // Update current capture index for next camera capture
+        currentCaptureIndex = getNextCameraSlotIndex()
+
+        if (getTotalImageCount() >= maxCaptures) {
             previewViews.forEach { it.visibility = View.GONE }
-        } else {
-            // Continue with normal capture flow
+            binding.saveButton.visibility = View.VISIBLE
+            binding.saveButton.setOnClickListener {
+                createAndSaveCollage()
+            }
+        } else if (currentCaptureIndex != -1) {
             setupCameraForNormalMode()
         }
     }
@@ -285,12 +358,10 @@ class BlankFragment : Fragment() {
     }
 
     private fun setupCamera(cameraProvider: ProcessCameraProvider) {
-        // Configure preview to match the preview view's aspect ratio
         val preview = Preview.Builder()
-            .setTargetAspectRatio(AspectRatio.RATIO_4_3) // Better for square-ish collage
+            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .build()
 
-        // Configure image capture to match preview aspect ratio
         imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
@@ -304,8 +375,7 @@ class BlankFragment : Fragment() {
 
             val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
 
-            if (activeIndex < previewViews.size) {
-                // Set preview to current active preview view
+            if (activeIndex >= 0 && activeIndex < previewViews.size) {
                 preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
             }
@@ -328,18 +398,26 @@ class BlankFragment : Fragment() {
                         val bitmap = convertImageProxyToBitmap(imageProxy)
                         imageProxy.close()
 
-                        capturedBitmaps.add(bitmap)
+                        // Ensure lists are large enough
+                        while (capturedBitmaps.size <= currentCaptureIndex) {
+                            capturedBitmaps.add(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+                        }
+
+                        capturedBitmaps[currentCaptureIndex] = bitmap
+                        imageSources[currentCaptureIndex] = ImageSource.CAMERA
+
                         imageOverlays[currentCaptureIndex].setImageBitmap(bitmap)
                         imageOverlays[currentCaptureIndex].visibility = View.VISIBLE
 
-                        currentCaptureIndex++
-
-                        if (currentCaptureIndex < maxCaptures) {
-                            // Switch to next preview view
+                        // Find next available camera slot
+                        val nextIndex = getNextCameraSlotIndex()
+                        if (nextIndex != -1) {
+                            currentCaptureIndex = nextIndex
                             switchToNextPreview()
                             binding.saveButton.visibility = View.GONE
-
                         } else {
+                            // All slots filled
+                            previewViews.forEach { it.visibility = View.GONE }
                             binding.saveButton.visibility = View.VISIBLE
                             binding.saveButton.setOnClickListener {
                                 createAndSaveCollage()
@@ -364,7 +442,7 @@ class BlankFragment : Fragment() {
     }
 
     private fun switchToNextPreview() {
-        if (currentCaptureIndex < maxCaptures) {
+        if (currentCaptureIndex < maxCaptures && currentCaptureIndex >= 0) {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
             cameraProviderFuture.addListener({
                 try {
@@ -423,11 +501,36 @@ class BlankFragment : Fragment() {
     }
 
     private fun createAndSaveCollage() {
-        if (capturedBitmaps.isEmpty()) return
-
         try {
-            // Use the actual dimensions of the captured images
-            val firstImage = capturedBitmaps[0]
+            // Get all final bitmaps (both camera and gallery)
+            val finalBitmaps = mutableListOf<Bitmap>()
+
+            for (i in 0 until maxCaptures) {
+                when (imageSources[i]) {
+                    ImageSource.CAMERA -> {
+                        if (i < capturedBitmaps.size) {
+                            finalBitmaps.add(capturedBitmaps[i])
+                        }
+                    }
+                    ImageSource.GALLERY -> {
+                        galleryUris[i]?.let { uri ->
+                            val bitmap = getBitmapFromUri(uri)
+                            bitmap?.let { finalBitmaps.add(it) }
+                        }
+                    }
+                    ImageSource.EMPTY -> {
+                        // Skip empty slots
+                    }
+                }
+            }
+
+            if (finalBitmaps.isEmpty()) {
+                Toast.makeText(requireContext(), "No images to create collage", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // Use the first image dimensions as reference
+            val firstImage = finalBitmaps[0]
             val imageWidth = firstImage.width
             val imageHeight = firstImage.height
 
@@ -435,25 +538,48 @@ class BlankFragment : Fragment() {
             val collageWidth = imageWidth * 2
             val collageHeight = imageHeight * 2
 
-            // Create final collage bitmap
             val result = Bitmap.createBitmap(collageWidth, collageHeight, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(result)
 
             // Draw images in 2x2 grid pattern
-            capturedBitmaps.forEachIndexed { index, bitmap ->
+            finalBitmaps.forEachIndexed { index, bitmap ->
                 val row = index / 2
                 val col = index % 2
                 val xPosition = (col * imageWidth).toFloat()
                 val yPosition = (row * imageHeight).toFloat()
-                canvas.drawBitmap(bitmap, xPosition, yPosition, null)
+
+                // Scale bitmap to fit the grid cell if needed
+                val scaledBitmap = Bitmap.createScaledBitmap(bitmap, imageWidth, imageHeight, true)
+                canvas.drawBitmap(scaledBitmap, xPosition, yPosition, null)
+
+                // Clean up scaled bitmap if it's different from original
+                if (scaledBitmap != bitmap) {
+                    scaledBitmap.recycle()
+                }
             }
 
             saveBitmapToStorage(result)
-
-            // Clean up
             result.recycle()
+
+            // Clean up gallery bitmaps that were created
+            finalBitmaps.forEachIndexed { index, bitmap ->
+                if (imageSources[index] == ImageSource.GALLERY) {
+                    bitmap.recycle()
+                }
+            }
+
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Failed to create collage: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun getBitmapFromUri(uri: Uri): Bitmap? {
+        return try {
+            val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
+            BitmapFactory.decodeStream(inputStream)
+        } catch (e: Exception) {
+            Log.e("BlankFragment", "Error loading bitmap from URI: ${e.message}")
+            null
         }
     }
 
@@ -485,25 +611,24 @@ class BlankFragment : Fragment() {
     }
 
     private fun updateUI() {
+        val totalImages = getTotalImageCount()
+        val nextCameraIndex = getNextCameraSlotIndex()
+
         when {
             isRetakeMode -> {
                 captureButton.text = "Retake Photo ${retakeIndex + 1}"
+                captureButton.visibility = View.VISIBLE
             }
-            currentCaptureIndex == 0 -> {
-                captureButton.text = "Capture Photo 1"
+            nextCameraIndex != -1 -> {
+                captureButton.text = "Capture Photo ${nextCameraIndex + 1}"
+                captureButton.visibility = View.VISIBLE
             }
-            currentCaptureIndex == 1 -> {
-                captureButton.text = "Capture Photo 2"
-            }
-            currentCaptureIndex == 2 -> {
-                captureButton.text = "Capture Photo 3"
-            }
-            currentCaptureIndex == 3 -> {
-                captureButton.text = "Capture Photo 4"
-            }
-            currentCaptureIndex >= maxCaptures -> {
+            totalImages >= maxCaptures -> {
                 captureButton.text = "Start Over"
-
+                captureButton.visibility = View.VISIBLE
+            }
+            else -> {
+                captureButton.visibility = View.GONE
             }
         }
 
@@ -518,6 +643,13 @@ class BlankFragment : Fragment() {
                     View.VISIBLE else View.GONE
             }
         }
+
+        // Show save button if all slots are filled
+        if (totalImages >= maxCaptures) {
+            binding.saveButton.visibility = View.VISIBLE
+        } else {
+            binding.saveButton.visibility = View.GONE
+        }
     }
 
     private fun resetCapture() {
@@ -526,11 +658,16 @@ class BlankFragment : Fragment() {
         retakeIndex = -1
         retakeFlag = false
 
-        // Hide all dustbin icons
         hideAllDustbinIcons()
 
+        // Clean up camera bitmaps
         capturedBitmaps.forEach { it.recycle() }
         capturedBitmaps.clear()
+
+        // Reset all tracking lists
+        imageSources.clear()
+        galleryUris.clear()
+        initializeLists()
 
         imageOverlays.forEach {
             it.setImageBitmap(null)
@@ -548,51 +685,50 @@ class BlankFragment : Fragment() {
         capturedBitmaps.clear()
     }
 
-//    val imagePickerLauncher =
-//        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-//            if (result.resultCode == Activity.RESULT_OK) {
-//                val uri: Uri? = result.data?.data
-//                if (uri != null) {
-//                    val targetIndex = setImageIndex - 1 // Convert to 0-based index
-//
-//                    // Ensure galleryUris list is large enough
-//                    while (galleryUris.size <= targetIndex) {
-//                        galleryUris.add(null)
-//                    }
-//
-//                    // Store the URI
-//                    galleryUris[targetIndex] = uri
-//
-//                    // Load and display the image
-//                    Glide.with(requireContext())
-//                        .load(uri)
-//                        .into(imageOverlays[targetIndex])
-//
-//                    // Show the overlay
-//                    imageOverlays[targetIndex].visibility = View.VISIBLE
-//
-//                    setImageIndex = 0
-//
-//                    // Check if we have all images needed
-//                    val totalImages = getTotalImageCount()
-//                    if (totalImages >= maxCaptures) {
-//                        // Hide all previews and show save button
-//                        previewViews.forEach { it.visibility = View.GONE }
-//                        binding.saveButton.visibility = View.VISIBLE
-//                        binding.saveButton.setOnClickListener {
-//                            createAndSaveCollage()
-//                        }
-//                    } else {
-//                        // Continue with camera for remaining slots
-//                        switchToNextPreview()
-//                    }
-//
-//                    updateUI()
-//                } else {
-//                    Log.e("ImagePicker", "Failed to get image URI")
-//                }
-//            }
-//        }
+    private val imagePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val uri: Uri? = result.data?.data
+                if (uri != null) {
+                    val targetIndex = setImageIndex
+
+                    // Store the URI and update source tracking
+                    galleryUris[targetIndex] = uri
+                    imageSources[targetIndex] = ImageSource.GALLERY
+
+                    // Load and display the image
+                    Glide.with(requireContext())
+                        .load(uri)
+                        .into(imageOverlays[targetIndex])
+
+                    // Show the overlay
+                    imageOverlays[targetIndex].visibility = View.VISIBLE
+
+                    setImageIndex = 0
+
+                    // Update current capture index for camera
+                    currentCaptureIndex = getNextCameraSlotIndex()
+
+                    // Check if we have all images needed
+                    val totalImages = getTotalImageCount()
+                    if (totalImages >= maxCaptures) {
+                        // Hide all previews and show save button
+                        previewViews.forEach { it.visibility = View.GONE }
+                        binding.saveButton.visibility = View.VISIBLE
+                        binding.saveButton.setOnClickListener {
+                            createAndSaveCollage()
+                        }
+                    } else if (currentCaptureIndex != -1) {
+                        // Continue with camera for remaining slots
+                        switchToNextPreview()
+                    }
+
+                    updateUI()
+                } else {
+                    Log.e("ImagePicker", "Failed to get image URI")
+                }
+            }
+        }
 
     private fun createTempFile(): File {
         val dir = requireContext().cacheDir

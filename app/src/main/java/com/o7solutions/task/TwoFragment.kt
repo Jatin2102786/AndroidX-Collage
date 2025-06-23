@@ -98,6 +98,8 @@ class TwoFragment : Fragment() {
             setImageIndex = 2
         }
 
+
+
         db = DatabaseDB.getInstance(requireContext())
         previewViews = listOf(
             view.findViewById(R.id.preview1),
