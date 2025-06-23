@@ -53,6 +53,14 @@
                 android:elevation="8dp"
                 android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
+            <ImageView
+                android:id="@+id/addImageBtn1"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/baseline_add_24"
+                app:tint="@color/white"
+                />
         </FrameLayout>
 
         <!-- Frame 2 with dustbin icon -->
@@ -82,6 +90,15 @@
                 android:elevation="8dp"
                 android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
+
+            <ImageView
+                android:id="@+id/addImageBtn2"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/baseline_add_24"
+                app:tint="@color/white"
+                />
         </FrameLayout>
 
         <!-- Frame 3 with dustbin icon -->
@@ -111,6 +128,15 @@
                 android:elevation="8dp"
                 android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
+
+            <ImageView
+                android:id="@+id/addImageBtn3"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/baseline_add_24"
+                app:tint="@color/white"
+                />
         </FrameLayout>
 
         <!-- Frame 4 with dustbin icon -->
@@ -140,6 +166,14 @@
                 android:elevation="8dp"
                 android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
+            <ImageView
+                android:id="@+id/addImageBtn4"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/baseline_add_24"
+                app:tint="@color/white"
+                />
         </FrameLayout>
     </GridLayout>
 

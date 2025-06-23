@@ -1,12 +1,15 @@
 package com.o7solutions.task
 
 import android.Manifest
+import android.app.Activity
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +22,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.bumptech.glide.Glide
 import com.o7solutions.task.database.DatabaseDB
 import com.o7solutions.task.database.ImageEntity
 import com.o7solutions.task.databinding.FragmentBlankBinding
@@ -44,6 +48,7 @@ class BlankFragment : Fragment() {
     private var isRetakeMode = false
     private var retakeFlag = false
     private var retakeIndex = -1
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentBlankBinding.inflate(inflater, container, false)
@@ -542,6 +547,52 @@ class BlankFragment : Fragment() {
         capturedBitmaps.forEach { it.recycle() }
         capturedBitmaps.clear()
     }
+
+//    val imagePickerLauncher =
+//        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+//            if (result.resultCode == Activity.RESULT_OK) {
+//                val uri: Uri? = result.data?.data
+//                if (uri != null) {
+//                    val targetIndex = setImageIndex - 1 // Convert to 0-based index
+//
+//                    // Ensure galleryUris list is large enough
+//                    while (galleryUris.size <= targetIndex) {
+//                        galleryUris.add(null)
+//                    }
+//
+//                    // Store the URI
+//                    galleryUris[targetIndex] = uri
+//
+//                    // Load and display the image
+//                    Glide.with(requireContext())
+//                        .load(uri)
+//                        .into(imageOverlays[targetIndex])
+//
+//                    // Show the overlay
+//                    imageOverlays[targetIndex].visibility = View.VISIBLE
+//
+//                    setImageIndex = 0
+//
+//                    // Check if we have all images needed
+//                    val totalImages = getTotalImageCount()
+//                    if (totalImages >= maxCaptures) {
+//                        // Hide all previews and show save button
+//                        previewViews.forEach { it.visibility = View.GONE }
+//                        binding.saveButton.visibility = View.VISIBLE
+//                        binding.saveButton.setOnClickListener {
+//                            createAndSaveCollage()
+//                        }
+//                    } else {
+//                        // Continue with camera for remaining slots
+//                        switchToNextPreview()
+//                    }
+//
+//                    updateUI()
+//                } else {
+//                    Log.e("ImagePicker", "Failed to get image URI")
+//                }
+//            }
+//        }
 
     private fun createTempFile(): File {
         val dir = requireContext().cacheDir

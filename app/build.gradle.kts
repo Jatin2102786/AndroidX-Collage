@@ -100,4 +100,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("io.github.jan-tennert.supabase:storage-kt:1.4.7")
     implementation("io.github.jan-tennert.supabase:supabase-kt:1.4.7")
+
+
+    implementation ("com.github.bumptech.glide:glide:4.16.0")
 }

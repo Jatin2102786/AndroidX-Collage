@@ -42,6 +42,17 @@
                 android:elevation="8dp"
                 android:layout_gravity="center"
                 android:layout_margin="8dp" />
+
+            <ImageView
+                android:id="@+id/addImageBtn1"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/baseline_add_24"
+                app:tint="@color/white"
+                />
+
+
         </FrameLayout>
 
         <FrameLayout android:layout_width="0dp" android:layout_height="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1">
@@ -58,6 +69,15 @@
                 android:visibility="gone"
                 android:layout_gravity="center"
                 android:layout_margin="8dp" />
+            <ImageView
+                android:id="@+id/addImageBtn2"
+                android:layout_gravity="center"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/baseline_add_24"
+                app:tint="@color/white"
+                />
+
         </FrameLayout>
 
 
