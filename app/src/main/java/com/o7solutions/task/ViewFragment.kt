@@ -12,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -20,12 +21,11 @@ import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.o7solutions.task.databinding.FragmentViewBinding
-import io.appwrite.Client
-import io.appwrite.ID
-import io.appwrite.exceptions.AppwriteException
-import io.appwrite.models.InputFile
-import io.appwrite.services.Storage
+import com.o7solutions.task.others.MyApplication
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -35,16 +35,9 @@ class ViewFragment : Fragment() {
     private var param2: String? = null
     private lateinit var binding: FragmentViewBinding
     private var imageUri = ""
-    lateinit var storage: Storage
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val client = Client(requireContext())
-            .setEndpoint("https://cloud.appwrite.io/v1")
-            .setProject("683ff28300274cce44da")
-
-        storage = Storage(client)
 
         arguments?.let {
             imageUri = it.getString("uri", "") ?: ""
@@ -72,18 +65,10 @@ class ViewFragment : Fragment() {
 
         binding.uploadButton.setOnClickListener {
             binding.progressBar.visibility = View.VISIBLE
-
             val uri = Uri.parse(imageUri)
-            val file = uriToFile(uri)
 
-            if (file != null && file.exists()) {
-                Log.d("Upload", "File exists: ${file.absolutePath}")
-                viewLifecycleOwner.lifecycleScope.launch {
-                    uploadImage(file)
-                }
-            } else {
-                Log.e("Upload", "File is null or doesn't exist")
-                binding.progressBar.visibility = View.GONE
+            viewLifecycleOwner.lifecycleScope.launch {
+                uploadImageToSupabase(uri)
             }
         }
 
@@ -100,44 +85,130 @@ class ViewFragment : Fragment() {
         }
     }
 
-    private suspend fun uploadImage(file: File) {
+    private suspend fun uploadImageToSupabase(uri: Uri) {
         try {
-            val response = storage.createFile(
-                bucketId = "683ff2db001cc7f21dfb",
-                fileId = ID.unique(),
-                file = InputFile.fromFile(file)
-            )
+            Log.d("Upload", "Starting upload for URI: $uri")
 
-            val fileUrl =
-                "https://cloud.appwrite.io/v1/storage/buckets/683ff2db001cc7f21dfb/files/${response.id}/view?project=683ff28300274cce44da&mode=admin"
+            // Convert URI to File
+            val file = withContext(Dispatchers.IO) {
+                uriToFile(uri)
+            }
 
-            Log.d("View Fragment", fileUrl)
-            showImageDialog(requireContext(), encodeAsBitmap(fileUrl, 500, 500))
-            Log.d("Appwrite", "File uploaded successfully: ${response.id}")
-        } catch (e: AppwriteException) {
-            Log.e("Appwrite", "Upload failed: ${e.message}")
+            if (file == null) {
+                Log.e("Upload", "Failed to create file from URI")
+                showError("Failed to prepare file for upload")
+                binding.progressBar.visibility = View.GONE
+                return
+            }
+
+            Log.d("Upload", "File created successfully:")
+            Log.d("Upload", "- Path: ${file.absolutePath}")
+            Log.d("Upload", "- Exists: ${file.exists()}")
+            Log.d("Upload", "- Size: ${file.length()} bytes")
+            Log.d("Upload", "- Can read: ${file.canRead()}")
+
+            if (!file.exists() || file.length() == 0L) {
+                Log.e("Upload", "File is empty or doesn't exist")
+                showError("File is empty or corrupted")
+                binding.progressBar.visibility = View.GONE
+                return
+            }
+
+            // Upload to Supabase
+            withContext(Dispatchers.IO) {
+                try {
+                    val filePath = "uploads/${System.currentTimeMillis()}.jpg"
+
+                    Log.d("Upload", "Uploading to Supabase with path: $filePath")
+
+                    // Upload file to Supabase Storage
+                    MyApplication.supabase.storage.from("Images")
+                        .upload(filePath, file.readBytes()) {
+                            upsert = true
+                        }
+
+                    // Get public URL
+                    val publicUrl = MyApplication.supabase.storage.from("Images").publicUrl(filePath)
+
+                    Log.d("Upload", "Upload successful!")
+                    Log.d("Upload", "Public URL: $publicUrl")
+
+                    // Switch back to main thread for UI updates
+                    withContext(Dispatchers.Main) {
+                        showImageDialog(requireContext(), encodeAsBitmap(publicUrl, 500, 500))
+                        showSuccess("File uploaded successfully!")
+                    }
+
+                    // Clean up temporary file
+                    file.delete()
+
+                } catch (e: Exception) {
+                    Log.e("Upload", "Supabase upload error", e)
+                    withContext(Dispatchers.Main) {
+                        showError("Upload failed: ${e.message}")
+                        binding.progressBar.visibility = View.GONE
+                    }
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e("Upload", "General upload error", e)
+            showError("Upload failed: ${e.message}")
+            binding.progressBar.visibility = View.GONE
         }
     }
 
     private fun uriToFile(uri: Uri): File? {
-        val file = File(requireContext().cacheDir, "temp_image_${System.currentTimeMillis()}.jpg")
         return try {
-            requireContext().contentResolver.openInputStream(uri)?.use { inputStream ->
-                FileOutputStream(file).use { outputStream ->
-                    inputStream.copyTo(outputStream)
+            Log.d("Upload", "Converting URI to file: $uri")
+
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            if (inputStream == null) {
+                Log.e("Upload", "Cannot open input stream for URI")
+                return null
+            }
+
+            // Create file with a unique name
+            val fileName = "temp_image_${System.currentTimeMillis()}.jpg"
+            val file = File(requireContext().cacheDir, fileName)
+
+            Log.d("Upload", "Creating temp file: ${file.absolutePath}")
+
+            inputStream.use { input ->
+                FileOutputStream(file).use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var totalBytes = 0L
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        totalBytes += bytesRead
+                    }
+
+                    Log.d("Upload", "Copied $totalBytes bytes to temp file")
                 }
             }
-            if (file.exists()) {
-                Log.d("ImagePicker", "File created: ${file.absolutePath}")
+
+            if (file.exists() && file.length() > 0) {
+                Log.d("Upload", "File created successfully: ${file.absolutePath}, size: ${file.length()}")
                 file
             } else {
-                Log.e("ImagePicker", "File doesn't exist after copy.")
+                Log.e("Upload", "File creation failed or file is empty")
                 null
             }
+
         } catch (e: Exception) {
-            Log.e("ImagePicker", "Error converting URI to file: ${e.message}")
+            Log.e("Upload", "Error converting URI to file", e)
             null
         }
+    }
+
+    private fun showError(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun showSuccess(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     @Throws(WriterException::class)

@@ -83,9 +83,21 @@ dependencies {
     implementation("com.google.zxing:core:3.2.0")
 
     //supabase storage
-//    implementation(platform("io.github.jan-tennert.supabase:bom:3.1.2"))
-//    implementation("io.github.jan-tennert.supabase:storage-kt:3.1.2")
-//    implementation("io.ktor:ktor-client-android:3.1.2") // or your target engine
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.1.2"))
+    implementation("io.github.jan-tennert.supabase:storage-kt:3.1.2")
+    implementation("io.ktor:ktor-client-android:2.3.8") // or your target engine
 
 
+    // Compatible Ktor dependencies
+    implementation("io.ktor:ktor-client-android:3.0.1")
+    implementation("io.ktor:ktor-client-core:3.0.1")
+    implementation("io.ktor:ktor-utils:3.0.1")
+//
+//    // Kotlinx Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+//
+//    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("io.github.jan-tennert.supabase:storage-kt:1.4.7")
+    implementation("io.github.jan-tennert.supabase:supabase-kt:1.4.7")
 }
