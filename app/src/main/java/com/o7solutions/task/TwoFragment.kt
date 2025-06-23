@@ -62,6 +62,7 @@ class TwoFragment : Fragment() {
     private var currentCaptureIndex = 0
     private val maxCaptures = 2
     private var isRetakeMode = false
+    private var retakeFlag = false
     private var retakeIndex = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -135,7 +136,10 @@ class TwoFragment : Fragment() {
     private fun setupLongPressListeners() {
         imageOverlays.forEachIndexed { index, imageView ->
             imageView.setOnLongClickListener {
-                if (capturedBitmaps.size > index) {
+                if (retakeFlag) {
+                    Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
+                    false
+                } else if (capturedBitmaps.size > index) {
                     showDustbinIcon(index)
                     true
                 } else {
@@ -177,6 +181,7 @@ class TwoFragment : Fragment() {
     private fun startRetakeMode(index: Int) {
         isRetakeMode = true
         retakeIndex = index
+        retakeFlag = true
 
         // Hide all dustbin icons
         hideAllDustbinIcons()
@@ -263,6 +268,7 @@ class TwoFragment : Fragment() {
     private fun exitRetakeMode() {
         isRetakeMode = false
         retakeIndex = -1
+        retakeFlag = false
 
         // Hide all dustbin icons
         hideAllDustbinIcons()
@@ -533,6 +539,7 @@ class TwoFragment : Fragment() {
         isRetakeMode = false
         retakeIndex = -1
 
+        retakeFlag = false
         // Hide all dustbin icons
         hideAllDustbinIcons()
 

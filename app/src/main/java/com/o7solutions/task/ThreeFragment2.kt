@@ -38,6 +38,7 @@ class ThreeFragment2 : Fragment() {
     private val capturedBitmaps = mutableListOf<Bitmap>()
     private lateinit var binding: FragmentThree2Binding
 
+    var retakeFlag = false
     private var currentCaptureIndex = 0
     private val maxCaptures = 3
     private var isRetakeMode = false
@@ -103,7 +104,10 @@ class ThreeFragment2 : Fragment() {
     private fun setupLongPressListeners() {
         imageOverlays.forEachIndexed { index, imageView ->
             imageView.setOnLongClickListener {
-                if (capturedBitmaps.size > index) {
+                if (retakeFlag) {
+                    Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
+                    false
+                } else if (capturedBitmaps.size > index) {
                     showDustbinIcon(index)
                     true
                 } else {
@@ -145,6 +149,7 @@ class ThreeFragment2 : Fragment() {
     private fun startRetakeMode(index: Int) {
         isRetakeMode = true
         retakeIndex = index
+        retakeFlag = true // Set retake flag when entering retake mode
 
         // Hide all dustbin icons
         hideAllDustbinIcons()
@@ -178,8 +183,6 @@ class ThreeFragment2 : Fragment() {
                 val cameraProvider = cameraProviderFuture.get()
                 setupCamera(cameraProvider)
             } catch (e: Exception) {
-
-//                Toast.makeText(requireContext(), "", Toast.LENGTH_SHORT).show()
                 Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
@@ -214,6 +217,8 @@ class ThreeFragment2 : Fragment() {
                         exitRetakeMode()
 
                         updateUI()
+
+                        Toast.makeText(requireContext(), "Photo ${retakeIndex + 1} retaken successfully", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(requireContext(), "Image processing failed: ${e.message}", Toast.LENGTH_SHORT).show()
                     } finally {
@@ -233,6 +238,7 @@ class ThreeFragment2 : Fragment() {
     private fun exitRetakeMode() {
         isRetakeMode = false
         retakeIndex = -1
+        retakeFlag = false // Clear retake flag when exiting retake mode
 
         // Hide all dustbin icons
         hideAllDustbinIcons()
@@ -504,6 +510,7 @@ class ThreeFragment2 : Fragment() {
         currentCaptureIndex = 0
         isRetakeMode = false
         retakeIndex = -1
+        retakeFlag = false // Reset retake flag
 
         // Hide all dustbin icons
         hideAllDustbinIcons()
