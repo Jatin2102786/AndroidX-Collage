@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.AspectRatio
@@ -64,6 +65,15 @@ class TwoFragment : Fragment() {
     private var isRetakeMode = false
     private var retakeFlag = false
     private var retakeIndex = -1
+
+    val pickMedia = registerForActivityResult(PickVisualMedia()) { uri ->
+        // Callback invoked after media selected or picker activity closed.
+        if (uri != null) {
+            Log.d("photo picker", "Selected URI: $uri")
+        } else {
+            Log.d("photo picker", "No media selected")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -586,4 +596,6 @@ class TwoFragment : Fragment() {
                 }
             }
     }
+
+
 }
