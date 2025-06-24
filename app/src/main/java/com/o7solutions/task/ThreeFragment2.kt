@@ -163,7 +163,14 @@ class ThreeFragment2 : Fragment() {
                 imageOverlays[index].visibility = View.VISIBLE
 
                 // Update capture index if this fills a gap
-                updateCaptureProgress()
+                if(retakeFlag) {
+                    exitRetakeMode()
+                    updateCaptureProgress()
+
+                } else {
+                    updateCaptureProgress()
+
+                }
 
                 Toast.makeText(requireContext(), "Image ${index + 1} selected from gallery", Toast.LENGTH_SHORT).show()
             } else {

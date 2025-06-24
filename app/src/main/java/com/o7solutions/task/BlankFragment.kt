@@ -709,6 +709,7 @@ class BlankFragment : Fragment() {
                     // Update current capture index for camera
                     currentCaptureIndex = getNextCameraSlotIndex()
 
+
                     // Check if we have all images needed
                     print("Next captureIndex:${currentCaptureIndex}")
                     val totalImages = getTotalImageCount()
@@ -720,8 +721,10 @@ class BlankFragment : Fragment() {
                             createAndSaveCollage()
                         }
                     } else if (currentCaptureIndex != -1) {
+                        Log.d("Current Capture Index", currentCaptureIndex.toString())
                         // Continue with camera for remaining slots
                         switchToNextPreview()
+                        exitRetakeMode()
                     }
 
                     updateUI()
@@ -730,6 +733,12 @@ class BlankFragment : Fragment() {
                 }
             }
         }
+
+    fun printLogs() {
+        Log.d("Current capture index:",currentCaptureIndex.toString())
+        Log.d("Retake mode",retakeIndex.toString())
+        Log.d("Retake Flag",retakeFlag.toString())
+    }
 
     private fun createTempFile(): File {
         val dir = requireContext().cacheDir

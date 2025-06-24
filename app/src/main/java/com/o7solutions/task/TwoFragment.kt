@@ -747,6 +747,7 @@ class TwoFragment : Fragment() {
                         }
                     } else {
                         // Continue with camera for remaining slots
+                        exitRetakeMode()
                         switchToNextPreview()
                     }
 
