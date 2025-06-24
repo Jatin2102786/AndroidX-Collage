@@ -40,7 +40,7 @@
                 android:padding="6dp"
                 android:visibility="gone"
                 android:elevation="8dp"
-                android:layout_gravity="center"
+                android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
 
             <ImageView
@@ -67,7 +67,7 @@
                 android:padding="6dp"
                 android:elevation="8dp"
                 android:visibility="gone"
-                android:layout_gravity="center"
+                android:layout_gravity="top|end"
                 android:layout_margin="8dp" />
             <ImageView
                 android:id="@+id/addImageBtn2"

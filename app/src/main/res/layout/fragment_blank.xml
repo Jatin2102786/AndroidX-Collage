@@ -81,8 +81,8 @@
                 android:scaleType="centerCrop"/>
             <ImageView
                 android:id="@+id/dustbin2"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_delete"
                 android:background="@drawable/circle_background"
                 android:padding="6dp"
@@ -119,8 +119,8 @@
                 android:scaleType="centerCrop"/>
             <ImageView
                 android:id="@+id/dustbin3"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_delete"
                 android:background="@drawable/circle_background"
                 android:padding="6dp"
@@ -157,8 +157,8 @@
                 android:scaleType="centerCrop"/>
             <ImageView
                 android:id="@+id/dustbin4"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:src="@drawable/ic_delete"
                 android:background="@drawable/circle_background"
                 android:padding="6dp"

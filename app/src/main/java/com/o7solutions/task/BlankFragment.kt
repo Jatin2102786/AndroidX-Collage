@@ -154,10 +154,10 @@ class BlankFragment : Fragment() {
     }
 
     private fun openGallery(index: Int) {
-        if (retakeFlag) {
-            Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
-            return
-        }
+//        if (retakeFlag) {
+//            Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
+//            return
+//        }
 
         setImageIndex = index
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
@@ -710,6 +710,7 @@ class BlankFragment : Fragment() {
                     currentCaptureIndex = getNextCameraSlotIndex()
 
                     // Check if we have all images needed
+                    print("Next captureIndex:${currentCaptureIndex}")
                     val totalImages = getTotalImageCount()
                     if (totalImages >= maxCaptures) {
                         // Hide all previews and show save button
