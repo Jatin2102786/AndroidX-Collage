@@ -42,8 +42,8 @@ class ThreeFragment2 : Fragment() {
     private lateinit var db : DatabaseDB
 
     private var imageCapture: ImageCapture? = null
-    private val capturedBitmaps = mutableListOf<Bitmap?>() // Changed to nullable
-    private val galleryUris = mutableListOf<Uri?>() // Gallery URIs storage
+    private val capturedBitmaps = mutableListOf<Bitmap?>()
+    private val galleryUris = mutableListOf<Uri?>()
     private lateinit var binding: FragmentThree2Binding
 
     var retakeFlag = false
@@ -60,10 +60,6 @@ class ThreeFragment2 : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-//        binding.switchButton.setOnClickListener {
-//            switchCamera()
-//        }
 
         db = DatabaseDB.getInstance(requireContext())
 
@@ -167,10 +163,15 @@ class ThreeFragment2 : Fragment() {
 
                 imageOverlays[index].visibility = View.VISIBLE
 
-                // Update capture index if this fills a gap
-                updateCaptureProgress()
-
-                Toast.makeText(requireContext(), "Image ${index + 1} selected from gallery", Toast.LENGTH_SHORT).show()
+                // If we're in retake mode, exit it
+                if (isRetakeMode && index == retakeIndex) {
+                    exitRetakeMode()
+                    Toast.makeText(requireContext(), "Photo ${index + 1} retaken from gallery", Toast.LENGTH_SHORT).show()
+                } else {
+                    // Update capture index if this fills a gap
+                    updateCaptureProgress()
+                    Toast.makeText(requireContext(), "Image ${index + 1} selected from gallery", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(requireContext(), "Failed to load selected image", Toast.LENGTH_SHORT).show()
             }
@@ -251,7 +252,6 @@ class ThreeFragment2 : Fragment() {
         }
     }
 
-
     private fun showDustbinIcon(index: Int) {
         dustbinIcons.forEach { it.visibility = View.GONE }
         dustbinIcons[index].visibility = View.VISIBLE
@@ -267,6 +267,8 @@ class ThreeFragment2 : Fragment() {
     }
 
     private fun startRetakeMode(index: Int) {
+        Log.d("RetakeMode", "Starting retake for index: $index")
+
         isRetakeMode = true
         retakeIndex = index
         retakeFlag = true
@@ -282,24 +284,66 @@ class ThreeFragment2 : Fragment() {
         imageOverlays[index].visibility = View.GONE
         imageOverlays[index].setImageBitmap(null)
 
-        // Show the preview for the specific index
+        // Show only the preview for the retake index
         previewViews.forEachIndexed { i, previewView ->
-            previewView.visibility = if (i == index) View.VISIBLE else View.GONE
+            previewView.visibility = if (i == retakeIndex) View.VISIBLE else View.GONE
         }
 
-        setupCameraForRetake()
+        // Update UI first
         updateUI()
 
-        Toast.makeText(requireContext(), "Retaking photo ${index + 1}", Toast.LENGTH_SHORT).show()
+        // Setup camera for retake with delay to ensure UI is ready
+        previewViews[retakeIndex].post {
+            setupCameraForRetake()
+        }
+
+        Toast.makeText(requireContext(), "Choose camera or gallery to retake photo ${index + 1}", Toast.LENGTH_SHORT).show()
     }
 
     private fun setupCameraForRetake() {
+        Log.d("RetakeMode", "Setting up camera for retake at index: $retakeIndex")
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
             try {
                 val cameraProvider = cameraProviderFuture.get()
-                setupCamera(cameraProvider)
+
+                // Create new instances for retake
+                val preview = Preview.Builder()
+                    .setTargetResolution(Size(1920, 1080))
+                    .build()
+
+                imageCapture = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setTargetResolution(Size(1920, 1080))
+                    .setJpegQuality(95)
+                    .build()
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                // Unbind all previous use cases first
+                cameraProvider.unbindAll()
+
+                // Ensure the preview view is ready
+                if (retakeIndex >= 0 && retakeIndex < previewViews.size) {
+                    val targetPreview = previewViews[retakeIndex]
+
+                    // Ensure preview is visible
+                    targetPreview.visibility = View.VISIBLE
+
+                    Log.d("RetakeMode", "Preview visibility: ${targetPreview.visibility}")
+
+                    // Set surface provider and bind camera
+                    preview.setSurfaceProvider(targetPreview.surfaceProvider)
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
+                    Log.d("CameraRetake", "Camera bound successfully for retake at index $retakeIndex")
+                } else {
+                    Log.e("CameraRetake", "Invalid retake index: $retakeIndex")
+                }
+
             } catch (e: Exception) {
+                Log.e("CameraRetake", "Camera initialization failed", e)
                 Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
@@ -325,7 +369,6 @@ class ThreeFragment2 : Fragment() {
                         imageOverlays[retakeIndex].visibility = View.VISIBLE
 
                         exitRetakeMode()
-                        updateUI()
 
                         Toast.makeText(requireContext(), "Photo ${retakeIndex + 1} retaken successfully", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
@@ -345,6 +388,8 @@ class ThreeFragment2 : Fragment() {
     }
 
     private fun exitRetakeMode() {
+        Log.d("RetakeMode", "Exiting retake mode")
+
         isRetakeMode = false
         retakeIndex = -1
         retakeFlag = false
@@ -354,14 +399,26 @@ class ThreeFragment2 : Fragment() {
         // Update capture progress
         updateCaptureProgress()
 
+        // Hide all preview views if all slots are filled
         if (currentCaptureIndex >= maxCaptures) {
             previewViews.forEach { it.visibility = View.GONE }
+            binding.saveButton.visibility = View.VISIBLE
+            binding.saveButton.setOnClickListener {
+                createAndSaveCollage()
+            }
         } else {
-            setupCameraForNormalMode()
+            // Setup camera for remaining empty slots with proper delay
+            view?.post {
+                setupCameraForNormalMode()
+            }
         }
+
+        updateUI()
     }
 
     private fun setupCameraForNormalMode() {
+        Log.d("Camera", "Setting up camera for normal mode")
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
             try {
@@ -399,15 +456,26 @@ class ThreeFragment2 : Fragment() {
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {
+            // Unbind all use cases first
             cameraProvider.unbindAll()
 
             val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
 
-            if (activeIndex < previewViews.size) {
-                preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
+            if (activeIndex >= 0 && activeIndex < previewViews.size) {
+                val targetPreview = previewViews[activeIndex]
+
+                // Ensure preview is visible before binding
+                targetPreview.visibility = View.VISIBLE
+
+                preview.setSurfaceProvider(targetPreview.surfaceProvider)
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
+                Log.d("CameraSetup", "Camera bound successfully for index $activeIndex")
+            } else {
+                Log.e("CameraSetup", "Invalid active index: $activeIndex")
             }
         } catch (e: Exception) {
+            Log.e("CameraSetup", "Camera binding failed", e)
             Toast.makeText(requireContext(), "Camera binding failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
@@ -592,30 +660,43 @@ class ThreeFragment2 : Fragment() {
     private fun updateUI() {
         when {
             isRetakeMode -> {
-                captureButton.text = "Retake Photo ${retakeIndex + 1}"
+                captureButton.text = "Take Photo ${retakeIndex + 1}"
+                captureButton.visibility = View.VISIBLE
+
+                // Show only the preview for retake index during retake mode
+                previewViews.forEachIndexed { index, previewView ->
+                    previewView.visibility = if (index == retakeIndex) View.VISIBLE else View.GONE
+                }
+
+                // Ensure gallery buttons are visible during retake
+                resetGalleryButtonsVisibility()
             }
             currentCaptureIndex == 0 -> {
                 captureButton.text = "Capture Photo 1"
+                previewViews.forEachIndexed { index, previewView ->
+                    previewView.visibility = if (index == 0) View.VISIBLE else View.GONE
+                }
+                resetGalleryButtonsVisibility()
             }
             currentCaptureIndex in 1 until maxCaptures -> {
                 captureButton.text = "Capture Photo ${currentCaptureIndex + 1}"
+                previewViews.forEachIndexed { index, previewView ->
+                    previewView.visibility = if (index == currentCaptureIndex) View.VISIBLE else View.GONE
+                }
+                resetGalleryButtonsVisibility()
             }
             currentCaptureIndex >= maxCaptures -> {
                 captureButton.text = "Start Over"
+                previewViews.forEach { it.visibility = View.GONE }
+                resetGalleryButtonsVisibility()
             }
         }
+    }
 
-        // Show/hide preview views
-        if (isRetakeMode) {
-            previewViews.forEachIndexed { index, previewView ->
-                previewView.visibility = if (index == retakeIndex) View.VISIBLE else View.GONE
-            }
-        } else {
-            previewViews.forEachIndexed { index, previewView ->
-                previewView.visibility = if (index == currentCaptureIndex && currentCaptureIndex < maxCaptures)
-                    View.VISIBLE else View.GONE
-            }
-        }
+    private fun resetGalleryButtonsVisibility() {
+        binding.addImageBtn1.visibility = View.VISIBLE
+        binding.addImageBtn2.visibility = View.VISIBLE
+        binding.addImageBtn3?.visibility = View.VISIBLE
     }
 
     private fun resetCapture() {

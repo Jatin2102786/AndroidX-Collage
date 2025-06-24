@@ -155,10 +155,10 @@ class BlankFragment : Fragment() {
     }
 
     private fun openGallery(index: Int) {
-//        if (retakeFlag) {
-//            Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
-//            return
-//        }
+        if (retakeFlag && !isRetakeMode) {
+            Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         setImageIndex = index
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
@@ -708,25 +708,27 @@ class BlankFragment : Fragment() {
 
                     setImageIndex = 0
 
-                    // Update current capture index for camera
-                    currentCaptureIndex = getNextCameraSlotIndex()
-
-
-                    // Check if we have all images needed
-                    print("Next captureIndex:${currentCaptureIndex}")
-                    val totalImages = getTotalImageCount()
-                    if (totalImages >= maxCaptures) {
-                        // Hide all previews and show save button
-                        previewViews.forEach { it.visibility = View.GONE }
-                        binding.saveButton.visibility = View.VISIBLE
-                        binding.saveButton.setOnClickListener {
-                            createAndSaveCollage()
-                        }
-                    } else if (currentCaptureIndex != -1) {
-                        Log.d("Current Capture Index", currentCaptureIndex.toString())
-                        // Continue with camera for remaining slots
-                        switchToNextPreview()
+                    // Handle retake mode specifically
+                    if (isRetakeMode && targetIndex == retakeIndex) {
+                        // Complete the retake process
                         exitRetakeMode()
+                    } else {
+                        // Update current capture index for camera
+                        currentCaptureIndex = getNextCameraSlotIndex()
+
+                        // Check if we have all images needed
+                        val totalImages = getTotalImageCount()
+                        if (totalImages >= maxCaptures) {
+                            // Hide all previews and show save button
+                            previewViews.forEach { it.visibility = View.GONE }
+                            binding.saveButton.visibility = View.VISIBLE
+                            binding.saveButton.setOnClickListener {
+                                createAndSaveCollage()
+                            }
+                        } else if (currentCaptureIndex != -1) {
+                            // Continue with camera for remaining slots
+                            switchToNextPreview()
+                        }
                     }
 
                     updateUI()
