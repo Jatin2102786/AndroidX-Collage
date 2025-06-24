@@ -32,6 +32,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.o7solutions.task.database.DatabaseDB
 import com.o7solutions.task.database.ImageEntity
@@ -56,6 +57,8 @@ class TwoFragment : Fragment() {
     private lateinit var imageOverlays: List<ImageView>
     private lateinit var dustbinIcons: List<ImageView>
     private lateinit var captureButton: Button
+    private var isBackCamera = true
+
 
     private lateinit var db: DatabaseDB
     private var imageCapture: ImageCapture? = null
@@ -97,6 +100,10 @@ class TwoFragment : Fragment() {
 
         updateUI()
         startCamera()
+
+        binding.switchButton.setOnClickListener {
+            switchCamera()
+        }
     }
 
     private fun initializeImageLists() {
@@ -669,6 +676,7 @@ class TwoFragment : Fragment() {
                     }
 
                     showToast("2-Photo collage saved to Pictures/Collages!")
+                    findNavController().popBackStack()
                 }
             } ?: run {
                 showToast("Failed to create file")
@@ -757,6 +765,52 @@ class TwoFragment : Fragment() {
         }
         capturedBitmaps.clear()
         galleryUris.clear()
+    }
+
+    private fun switchCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                val cameraProvider = cameraProviderFuture.get()
+
+                // Toggle camera
+                isBackCamera = !isBackCamera
+
+                // Get current active preview index
+                val activeIndex = when {
+                    isRetakeMode -> retakeIndex
+                    getTotalImageCount() >= MAX_CAPTURES -> -1
+                    else -> getNextAvailableIndex()
+                }
+
+                if (activeIndex >= 0) {
+                    val preview = Preview.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+                        .build()
+
+                    imageCapture = ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+                        .setJpegQuality(JPEG_QUALITY)
+                        .build()
+
+                    val cameraSelector = if (isBackCamera) {
+                        CameraSelector.DEFAULT_BACK_CAMERA
+                    } else {
+                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    }
+
+                    cameraProvider.unbindAll()
+                    preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
+                    showToast(if (isBackCamera) "Back Camera" else "Front Camera")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Camera switch failed", e)
+                showToast("Camera switch failed")
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
     }
 
     companion object {

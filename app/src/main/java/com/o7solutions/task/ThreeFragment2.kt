@@ -23,6 +23,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.o7solutions.task.database.DatabaseDB
 import com.o7solutions.task.database.ImageEntity
@@ -59,6 +60,10 @@ class ThreeFragment2 : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+//        binding.switchButton.setOnClickListener {
+//            switchCamera()
+//        }
 
         db = DatabaseDB.getInstance(requireContext())
 
@@ -245,6 +250,7 @@ class ThreeFragment2 : Fragment() {
             }
         }
     }
+
 
     private fun showDustbinIcon(index: Int) {
         dustbinIcons.forEach { it.visibility = View.GONE }
@@ -574,6 +580,7 @@ class ThreeFragment2 : Fragment() {
                     db.databaseDao().insertImage(ImageEntity(name = filename, path = it.toString(), timeStamp = System.currentTimeMillis()))
                     Toast.makeText(requireContext(), "Collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
                 }
+                findNavController().popBackStack()
             } ?: run {
                 Toast.makeText(requireContext(), "Failed to create file.", Toast.LENGTH_SHORT).show()
             }
