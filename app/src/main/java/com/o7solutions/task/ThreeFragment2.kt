@@ -53,6 +53,9 @@ class ThreeFragment2 : Fragment() {
     private var retakeIndex = -1
     private var setImageIndex = 0
 
+    private var currentCameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var isFrontCamera = false
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentThree2Binding.inflate(inflater, container, false)
         return binding.root
@@ -62,6 +65,10 @@ class ThreeFragment2 : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         db = DatabaseDB.getInstance(requireContext())
+
+        binding.switchButton.setOnClickListener {
+            switchCamera()
+        }
 
         // Initialize lists with nulls
         repeat(maxCaptures) {
@@ -593,6 +600,53 @@ class ThreeFragment2 : Fragment() {
         yuvImage.compressToJpeg(Rect(0, 0, imageProxy.width, imageProxy.height), 100, out)
         val bytes = out.toByteArray()
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+
+    private fun switchCamera() {
+        // Toggle camera selector
+        currentCameraSelector = if (isFrontCamera) {
+            CameraSelector.DEFAULT_BACK_CAMERA
+        } else {
+            CameraSelector.DEFAULT_FRONT_CAMERA
+        }
+
+        isFrontCamera = !isFrontCamera
+
+        // Restart camera with new selector
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                val cameraProvider = cameraProviderFuture.get()
+
+                val preview = Preview.Builder()
+                    .setTargetResolution(Size(1920, 1080))
+                    .build()
+
+                imageCapture = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .setTargetResolution(Size(1920, 1080))
+                    .setJpegQuality(95)
+                    .build()
+
+                cameraProvider.unbindAll()
+
+                val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
+
+                if (activeIndex >= 0 && activeIndex < previewViews.size) {
+                    val targetPreview = previewViews[activeIndex]
+                    targetPreview.visibility = View.VISIBLE
+
+                    preview.setSurfaceProvider(targetPreview.surfaceProvider)
+                    cameraProvider.bindToLifecycle(this, currentCameraSelector, preview, imageCapture)
+                }
+
+                val cameraType = if (isFrontCamera) "Front" else "Back"
+//                Toast.makeText(requireContext(), "Switched to $cameraType Camera", Toast.LENGTH_SHORT).show()
+
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Failed to switch camera: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
     }
 
     private fun createAndSaveCollage() {

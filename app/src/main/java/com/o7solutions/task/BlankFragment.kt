@@ -44,6 +44,10 @@ class BlankFragment : Fragment() {
     private lateinit var db: DatabaseDB
     private var imageCapture: ImageCapture? = null
 
+
+    private var currentCameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+
     // Updated to handle both camera and gallery images
     private val imageSources = mutableListOf<ImageSource>() // Track source of each image
     private val capturedBitmaps = mutableListOf<Bitmap>()
@@ -134,6 +138,10 @@ class BlankFragment : Fragment() {
                     resetCapture()
                 }
             }
+        }
+
+        binding.switchButton.setOnClickListener {
+            switchCamera()
         }
 
         // Set up long press listeners for image overlays
@@ -331,6 +339,69 @@ class BlankFragment : Fragment() {
             }
         } else if (currentCaptureIndex != -1) {
             setupCameraForNormalMode()
+        }
+    }
+
+
+    private fun switchCamera() {
+        try {
+            // Toggle between front and back camera
+            currentCameraSelector = if (currentCameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                CameraSelector.DEFAULT_FRONT_CAMERA
+            } else {
+                CameraSelector.DEFAULT_BACK_CAMERA
+            }
+
+            // Get camera provider and restart camera with new selector
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+            cameraProviderFuture.addListener({
+                try {
+                    val cameraProvider = cameraProviderFuture.get()
+
+                    // Setup camera components
+                    val preview = Preview.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .build()
+
+                    imageCapture = ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .setJpegQuality(95)
+                        .build()
+
+                    // Unbind all previous use cases
+                    cameraProvider.unbindAll()
+
+                    // Determine which preview to use
+                    val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
+
+                    if (activeIndex >= 0 && activeIndex < previewViews.size) {
+                        // Bind camera to lifecycle with new selector
+                        preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
+                        cameraProvider.bindToLifecycle(this, currentCameraSelector, preview, imageCapture)
+
+                        // Show feedback to user
+                        val cameraType = if (currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
+                            "Front"
+                        } else {
+                            "Back"
+                        }
+//                        Toast.makeText(requireContext(), "Switched to $cameraType Camera", Toast.LENGTH_SHORT).show()
+                    }
+
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Failed to switch camera: ${e.message}", Toast.LENGTH_SHORT).show()
+                    // Revert camera selector on failure
+                    currentCameraSelector = if (currentCameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    } else {
+                        CameraSelector.DEFAULT_BACK_CAMERA
+                    }
+                }
+            }, ContextCompat.getMainExecutor(requireContext()))
+
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Camera switch failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 

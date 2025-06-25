@@ -804,7 +804,7 @@ class TwoFragment : Fragment() {
                     preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
 
-                    showToast(if (isBackCamera) "Back Camera" else "Front Camera")
+//                    showToast(if (isBackCamera) "Back Camera" else "Front Camera")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Camera switch failed", e)
