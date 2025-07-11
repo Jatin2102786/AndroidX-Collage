@@ -1,20 +1,16 @@
 package com.o7solutions.task
 
+import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.ImageFormat
-import android.graphics.Rect
-import android.graphics.YuvImage
+import android.content.pm.PackageManager
+import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,101 +18,77 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.AspectRatio
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.o7solutions.task.database.DatabaseDB
 import com.o7solutions.task.database.ImageEntity
 import com.o7solutions.task.databinding.FragmentTwoBinding
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.nio.ByteBuffer
 
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-private const val TAG = "TwoFragment"
-private const val MAX_CAPTURES = 2
-private const val JPEG_QUALITY = 95
-
 class TwoFragment : Fragment() {
-    private var param1: String? = null
-    private var param2: String? = null
 
     private lateinit var previewViews: List<PreviewView>
     private lateinit var imageOverlays: List<ImageView>
     private lateinit var dustbinIcons: List<ImageView>
     private lateinit var captureButton: Button
-    private var isBackCamera = true
-
 
     private lateinit var db: DatabaseDB
     private var imageCapture: ImageCapture? = null
-    private val capturedBitmaps = mutableListOf<Bitmap?>()
+
+    private var currentCameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+    // Updated to handle both camera and gallery images
+    private val imageSources = mutableListOf<ImageSource>() // Track source of each image
+    private val capturedBitmaps = mutableListOf<Bitmap>()
     private val galleryUris = mutableListOf<Uri?>()
+
     private lateinit var binding: FragmentTwoBinding
 
-    // State management variables
+    private var currentCaptureIndex = 0
+    private val maxCaptures = 2
     private var isRetakeMode = false
+    private var retakeFlag = false
     private var retakeIndex = -1
-    private var isProcessingCapture = false
     private var setImageIndex = 0
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-
-        // Initialize lists with null values
-        initializeImageLists()
+    // Enum to track image source
+    enum class ImageSource {
+        CAMERA,
+        GALLERY,
+        EMPTY
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        binding = FragmentTwoBinding.inflate(layoutInflater)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        binding = FragmentTwoBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupViews(view)
-        setupClickListeners()
-        setupDatabase()
+        db = DatabaseDB.getInstance(requireContext())
 
-        updateUI()
-        startCamera()
+        // Initialize lists
+        initializeLists()
 
-        binding.switchButton.setOnClickListener {
-            switchCamera()
+        // Set up gallery button listeners
+        binding.addImageBtn1.setOnClickListener {
+            openGallery(0)
         }
-    }
 
-    private fun initializeImageLists() {
-        // Initialize with null values for MAX_CAPTURES slots
-        capturedBitmaps.clear()
-        galleryUris.clear()
-        repeat(MAX_CAPTURES) {
-            capturedBitmaps.add(null)
-            galleryUris.add(null)
+        binding.addImageBtn2.setOnClickListener {
+            openGallery(1)
         }
-    }
 
-    private fun setupViews(view: View) {
         previewViews = listOf(
             view.findViewById(R.id.preview1),
             view.findViewById(R.id.preview2)
@@ -125,217 +97,86 @@ class TwoFragment : Fragment() {
             view.findViewById(R.id.overlay1),
             view.findViewById(R.id.overlay2)
         )
+
         dustbinIcons = listOf(
             view.findViewById(R.id.dustbin1),
             view.findViewById(R.id.dustbin2)
         )
+
         captureButton = view.findViewById(R.id.captureButton)
 
+        // Set scale type for preview views
         previewViews.forEach { previewView ->
             previewView.scaleType = PreviewView.ScaleType.FILL_START
         }
-    }
 
-    private fun setupClickListeners() {
-        // Gallery selection buttons
-        binding.addImageBtn1.setOnClickListener {
-            selectImageFromGallery(0)
-        }
-
-        binding.addImageBtn2.setOnClickListener {
-            selectImageFromGallery(1)
-        }
-
-        // Capture button
         captureButton.setOnClickListener {
-            when {
-                isRetakeMode -> retakeImage()
-                getTotalImageCount() >= MAX_CAPTURES -> resetCapture()
-                else -> captureImage()
+            if (isRetakeMode) {
+                retakeImage()
+            } else {
+                val nextCameraIndex = getNextCameraSlotIndex()
+                if (nextCameraIndex != -1) {
+                    currentCaptureIndex = nextCameraIndex
+                    captureImage()
+                } else {
+                    resetCapture()
+                }
             }
         }
 
-        // Image overlay click listeners
-        binding.overlay1.setOnClickListener {
-            Log.d(TAG, "Overlay1 clicked")
+        binding.switchButton.setOnClickListener {
+            switchCamera()
         }
 
+        // Set up long press listeners for image overlays
         setupLongPressListeners()
+
+        // Set up dustbin icon click listeners
         setupDustbinClickListeners()
+
+        updateUI()
+        startCamera()
     }
 
-    private fun setupDatabase() {
-        db = DatabaseDB.getInstance(requireContext())
+    private fun initializeLists() {
+        // Initialize with empty slots
+        repeat(maxCaptures) {
+            imageSources.add(ImageSource.EMPTY)
+            galleryUris.add(null)
+        }
     }
 
-    private fun selectImageFromGallery(index: Int) {
-//        if (isRetakeMode) {
-//            showToast("Please complete current retake before selecting another photo")
-//            return
-//        }
+    private fun openGallery(index: Int) {
+        if (retakeFlag && !isRetakeMode) {
+            Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         setImageIndex = index
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         imagePickerLauncher.launch(intent)
     }
 
-    // State management functions
-    private fun hasValidImageAtIndex(index: Int): Boolean {
-        if (index < 0 || index >= MAX_CAPTURES) return false
-
-        val hasCameraImage = index < capturedBitmaps.size &&
-                capturedBitmaps[index] != null &&
-                !capturedBitmaps[index]!!.isRecycled
-        val hasGalleryImage = index < galleryUris.size && galleryUris[index] != null
-
-        return hasCameraImage || hasGalleryImage
+    private fun getNextCameraSlotIndex(): Int {
+        for (i in 0 until maxCaptures) {
+            if (imageSources[i] == ImageSource.EMPTY) {
+                return i
+            }
+        }
+        return -1 // All slots filled
     }
 
     private fun getTotalImageCount(): Int {
-        return (0 until MAX_CAPTURES).count { index ->
-            hasValidImageAtIndex(index)
-        }
+        return imageSources.count { it != ImageSource.EMPTY }
     }
 
-    private fun getNextAvailableIndex(): Int {
-        return (0 until MAX_CAPTURES).firstOrNull { index ->
-            !hasValidImageAtIndex(index)
-        } ?: -1
-    }
-
-    private fun clearImageAtIndex(index: Int) {
-        if (index < 0 || index >= MAX_CAPTURES) return
-
-        // Clear camera bitmap
-        if (index < capturedBitmaps.size && capturedBitmaps[index] != null) {
-            capturedBitmaps[index]?.let { bitmap ->
-                if (!bitmap.isRecycled) {
-                    bitmap.recycle()
-                }
-            }
-            capturedBitmaps[index] = null
-        }
-
-        // Clear gallery URI
-        if (index < galleryUris.size) {
-            galleryUris[index] = null
-        }
-
-        // Clear UI
-        if (index < imageOverlays.size) {
-            imageOverlays[index].setImageBitmap(null)
-            imageOverlays[index].visibility = View.GONE
-        }
-    }
-
-    private fun setImageAtIndex(index: Int, bitmap: Bitmap) {
-        if (index < 0 || index >= MAX_CAPTURES) return
-
-        // Ensure lists are large enough
-        while (capturedBitmaps.size <= index) {
-            capturedBitmaps.add(null)
-        }
-
-        // Clear any existing image at this index first
-        clearImageAtIndex(index)
-
-        // Set new image
-        capturedBitmaps[index] = bitmap
-        imageOverlays[index].setImageBitmap(bitmap)
-        imageOverlays[index].visibility = View.VISIBLE
-    }
-
-    private fun setGalleryImageAtIndex(index: Int, uri: Uri) {
-        if (index < 0 || index >= MAX_CAPTURES) return
-
-        // Ensure lists are large enough
-        while (galleryUris.size <= index) {
-            galleryUris.add(null)
-        }
-
-        // Clear any existing camera image at this index
-        if (index < capturedBitmaps.size && capturedBitmaps[index] != null) {
-            capturedBitmaps[index]?.let { bitmap ->
-                if (!bitmap.isRecycled) {
-                    bitmap.recycle()
-                }
-            }
-            capturedBitmaps[index] = null
-        }
-
-        // Set gallery image
-        galleryUris[index] = uri
-
-        // Load and display the image
-        Glide.with(requireContext())
-            .load(uri)
-            .into(imageOverlays[index])
-
-        imageOverlays[index].visibility = View.VISIBLE
-    }
-
-    // Retake mode functions
-    private fun enterRetakeMode(index: Int) {
-        if (index < 0 || index >= MAX_CAPTURES) {
-            Log.e(TAG, "Invalid retake index: $index")
-            return
-        }
-
-        if (!hasValidImageAtIndex(index)) {
-            Log.e(TAG, "No image at index $index to retake")
-            return
-        }
-
-        isRetakeMode = true
-        retakeIndex = index
-
-        hideAllDustbinIcons()
-        clearImageAtIndex(index)
-
-        updateUI()
-        setupCameraForIndex(index)
-
-        showToast("Retaking photo ${index + 1}")
-    }
-
-    private fun exitRetakeMode() {
-        isRetakeMode = false
-        retakeIndex = -1
-
-        hideAllDustbinIcons()
-        updateUI()
-
-        val totalImages = getTotalImageCount()
-        if (totalImages >= MAX_CAPTURES) {
-            showAllCapturedImages()
-            showSaveButton()
-        } else {
-            val nextIndex = getNextAvailableIndex()
-            if (nextIndex >= 0) {
-                setupCameraForIndex(nextIndex)
-            }
-        }
-    }
-
-    private fun showAllCapturedImages() {
-        previewViews.forEach { it.visibility = View.GONE }
-    }
-
-    private fun showSaveButton() {
-        binding.saveButton.visibility = View.VISIBLE
-        binding.saveButton.setOnClickListener {
-            createAndSaveCollage()
-        }
-    }
-
-    // Long press and dustbin functionality
     private fun setupLongPressListeners() {
         imageOverlays.forEachIndexed { index, imageView ->
             imageView.setOnLongClickListener {
-                if (isRetakeMode) {
-                    showToast("Please complete current retake before selecting another photo")
+                if (retakeFlag) {
+                    Toast.makeText(requireContext(), "Please complete current retake before selecting another photo", Toast.LENGTH_SHORT).show()
                     false
-                } else if (hasValidImageAtIndex(index)) {
+                } else if (imageSources[index] != ImageSource.EMPTY) {
                     showDustbinIcon(index)
                     true
                 } else {
@@ -349,98 +190,259 @@ class TwoFragment : Fragment() {
         dustbinIcons.forEachIndexed { index, dustbinIcon ->
             dustbinIcon.setOnClickListener {
                 hideDustbinIcon(index)
-                enterRetakeMode(index)
+                startRetakeMode(index)
             }
         }
     }
 
     private fun showDustbinIcon(index: Int) {
-        hideAllDustbinIcons()
-        if (index < dustbinIcons.size) {
-            dustbinIcons[index].visibility = View.VISIBLE
-            showToast("Tap dustbin to retake photo ${index + 1}")
-        }
+        dustbinIcons.forEach { it.visibility = View.GONE }
+        dustbinIcons[index].visibility = View.VISIBLE
+        Toast.makeText(requireContext(), "Tap dustbin to retake photo ${index + 1}", Toast.LENGTH_SHORT).show()
     }
 
     private fun hideDustbinIcon(index: Int) {
-        if (index < dustbinIcons.size) {
-            dustbinIcons[index].visibility = View.GONE
-        }
+        dustbinIcons[index].visibility = View.GONE
     }
 
     private fun hideAllDustbinIcons() {
         dustbinIcons.forEach { it.visibility = View.GONE }
     }
 
-    // Camera functionality
-    private fun startCamera() {
-        val nextIndex = getNextAvailableIndex()
-        if (nextIndex >= 0) {
-            setupCameraForIndex(nextIndex)
+    private fun startRetakeMode(index: Int) {
+        isRetakeMode = true
+        retakeIndex = index
+        retakeFlag = true
+
+        hideAllDustbinIcons()
+
+        // Clear the image at this index
+        clearImageAtIndex(index)
+
+        // Show the preview for the specific index
+        previewViews.forEachIndexed { i, previewView ->
+            previewView.visibility = if (i == index) View.VISIBLE else View.GONE
         }
+
+        setupCameraForRetake()
+        updateUI()
+
+        Toast.makeText(requireContext(), "Retaking photo ${index + 1}", Toast.LENGTH_SHORT).show()
     }
 
-    private fun setupCameraForIndex(index: Int) {
+    private fun clearImageAtIndex(index: Int) {
+        // Clear bitmap if it's a camera image
+        if (imageSources[index] == ImageSource.CAMERA && index < capturedBitmaps.size) {
+            capturedBitmaps[index].recycle()
+        }
+
+        // Clear gallery URI
+        if (index < galleryUris.size) {
+            galleryUris[index] = null
+        }
+
+        // Reset source
+        imageSources[index] = ImageSource.EMPTY
+
+        // Clear overlay
+        imageOverlays[index].visibility = View.GONE
+        imageOverlays[index].setImageBitmap(null)
+    }
+
+    private fun setupCameraForRetake() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
             try {
                 val cameraProvider = cameraProviderFuture.get()
-                bindCameraToPreview(cameraProvider, index)
+                setupCamera(cameraProvider)
             } catch (e: Exception) {
-                Log.e(TAG, "Camera initialization failed", e)
-                showToast("Camera initialization failed: ${e.message}")
+                Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
-    private fun bindCameraToPreview(cameraProvider: ProcessCameraProvider, previewIndex: Int) {
-        if (previewIndex < 0 || previewIndex >= previewViews.size) {
-            Log.e(TAG, "Invalid preview index: $previewIndex")
-            return
-        }
+    private fun retakeImage() {
+        val imageCapture = imageCapture ?: return
 
+        captureButton.isEnabled = false
+
+        imageCapture.takePicture(
+            ContextCompat.getMainExecutor(requireContext()),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                    try {
+                        val bitmap = convertImageProxyToBitmap(imageProxy)
+                        imageProxy.close()
+
+                        // Store the bitmap at the retake index
+                        while (capturedBitmaps.size <= retakeIndex) {
+                            capturedBitmaps.add(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+                        }
+                        capturedBitmaps[retakeIndex] = bitmap
+
+                        // Update source tracking
+                        imageSources[retakeIndex] = ImageSource.CAMERA
+
+                        // Update the overlay
+                        imageOverlays[retakeIndex].setImageBitmap(bitmap)
+                        imageOverlays[retakeIndex].visibility = View.VISIBLE
+
+                        exitRetakeMode()
+                        updateUI()
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), "Image processing failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        captureButton.isEnabled = true
+                    }
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    captureButton.isEnabled = true
+                    Toast.makeText(requireContext(), "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+                    updateUI()
+                }
+            }
+        )
+    }
+
+    private fun exitRetakeMode() {
+        isRetakeMode = false
+        retakeIndex = -1
+        retakeFlag = false
+
+        hideAllDustbinIcons()
+
+        // Update current capture index for next camera capture
+        currentCaptureIndex = getNextCameraSlotIndex()
+
+        if (getTotalImageCount() >= maxCaptures) {
+            previewViews.forEach { it.visibility = View.GONE }
+            binding.saveButton.visibility = View.VISIBLE
+            binding.saveButton.setOnClickListener {
+                createAndSaveCollage()
+            }
+        } else if (currentCaptureIndex != -1) {
+            setupCameraForNormalMode()
+        }
+    }
+
+    private fun switchCamera() {
+        try {
+            // Toggle between front and back camera
+            currentCameraSelector = if (currentCameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                CameraSelector.DEFAULT_FRONT_CAMERA
+            } else {
+                CameraSelector.DEFAULT_BACK_CAMERA
+            }
+
+            // Get camera provider and restart camera with new selector
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+            cameraProviderFuture.addListener({
+                try {
+                    val cameraProvider = cameraProviderFuture.get()
+
+                    // Setup camera components
+                    val preview = Preview.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .build()
+
+                    imageCapture = ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .setJpegQuality(95)
+                        .build()
+
+                    // Unbind all previous use cases
+                    cameraProvider.unbindAll()
+
+                    // Determine which preview to use
+                    val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
+
+                    if (activeIndex >= 0 && activeIndex < previewViews.size) {
+                        // Bind camera to lifecycle with new selector
+                        preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
+                        cameraProvider.bindToLifecycle(this, currentCameraSelector, preview, imageCapture)
+
+                        // Show feedback to user
+                        val cameraType = if (currentCameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA) {
+                            "Front"
+                        } else {
+                            "Back"
+                        }
+//                        Toast.makeText(requireContext(), "Switched to $cameraType Camera", Toast.LENGTH_SHORT).show()
+                    }
+
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Failed to switch camera: ${e.message}", Toast.LENGTH_SHORT).show()
+                    // Revert camera selector on failure
+                    currentCameraSelector = if (currentCameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
+                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    } else {
+                        CameraSelector.DEFAULT_BACK_CAMERA
+                    }
+                }
+            }, ContextCompat.getMainExecutor(requireContext()))
+
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Camera switch failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupCameraForNormalMode() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                val cameraProvider = cameraProviderFuture.get()
+                setupCamera(cameraProvider)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+        cameraProviderFuture.addListener({
+            try {
+                val cameraProvider = cameraProviderFuture.get()
+                setupCamera(cameraProvider)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }, ContextCompat.getMainExecutor(requireContext()))
+    }
+
+    private fun setupCamera(cameraProvider: ProcessCameraProvider) {
         val preview = Preview.Builder()
-            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .build()
 
         imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-            .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-            .setJpegQuality(JPEG_QUALITY)
+            .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+            .setJpegQuality(95)
             .build()
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {
             cameraProvider.unbindAll()
-            preview.setSurfaceProvider(previewViews[previewIndex].surfaceProvider)
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+
+            val activeIndex = if (isRetakeMode) retakeIndex else currentCaptureIndex
+
+            if (activeIndex >= 0 && activeIndex < previewViews.size) {
+                preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Camera binding failed", e)
-            showToast("Camera binding failed: ${e.message}")
+            Toast.makeText(requireContext(), "Camera binding failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Image capture functions
     private fun captureImage() {
-        val imageCapture = this.imageCapture ?: run {
-            Log.e(TAG, "ImageCapture is null")
-            showToast("Camera not ready")
-            return
-        }
+        val imageCapture = imageCapture ?: return
 
-        if (isProcessingCapture) {
-            Log.w(TAG, "Already processing capture")
-            return
-        }
-
-        val targetIndex = if (isRetakeMode) retakeIndex else getNextAvailableIndex()
-        if (targetIndex < 0) {
-            Log.e(TAG, "No available slot for capture")
-            return
-        }
-
-        isProcessingCapture = true
+        captureButton.isEnabled = false
         updateUI()
 
         imageCapture.takePicture(
@@ -449,84 +451,72 @@ class TwoFragment : Fragment() {
                 override fun onCaptureSuccess(imageProxy: ImageProxy) {
                     try {
                         val bitmap = convertImageProxyToBitmap(imageProxy)
-                        setImageAtIndex(targetIndex, bitmap)
-
-                        if (isRetakeMode) {
-                            exitRetakeMode()
-                        } else {
-                            handleNormalCaptureComplete()
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Image processing failed", e)
-                        showToast("Image processing failed: ${e.message}")
-                    } finally {
                         imageProxy.close()
-                        isProcessingCapture = false
+
+                        // Ensure lists are large enough
+                        while (capturedBitmaps.size <= currentCaptureIndex) {
+                            capturedBitmaps.add(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888))
+                        }
+
+                        capturedBitmaps[currentCaptureIndex] = bitmap
+                        imageSources[currentCaptureIndex] = ImageSource.CAMERA
+
+                        imageOverlays[currentCaptureIndex].setImageBitmap(bitmap)
+                        imageOverlays[currentCaptureIndex].visibility = View.VISIBLE
+
+                        // Find next available camera slot
+                        val nextIndex = getNextCameraSlotIndex()
+                        if (nextIndex != -1) {
+                            currentCaptureIndex = nextIndex
+                            switchToNextPreview()
+                            binding.saveButton.visibility = View.GONE
+                        } else {
+                            // All slots filled
+                            previewViews.forEach { it.visibility = View.GONE }
+                            binding.saveButton.visibility = View.VISIBLE
+                            binding.saveButton.setOnClickListener {
+                                createAndSaveCollage()
+                            }
+                        }
+
                         updateUI()
+                    } catch (e: Exception) {
+                        Toast.makeText(requireContext(), "Image processing failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        captureButton.isEnabled = true
                     }
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-                    isProcessingCapture = false
-                    Log.e(TAG, "Capture failed", exception)
-                    showToast("Capture failed: ${exception.message}")
+                    captureButton.isEnabled = true
+                    Toast.makeText(requireContext(), "Capture failed: ${exception.message}", Toast.LENGTH_SHORT).show()
                     updateUI()
                 }
             }
         )
     }
 
-    private fun retakeImage() {
-        captureImage() // Uses the same logic but with retake mode state
-    }
+    private fun switchToNextPreview() {
+        if (currentCaptureIndex < maxCaptures && currentCaptureIndex >= 0) {
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
+            cameraProviderFuture.addListener({
+                try {
+                    val cameraProvider = cameraProviderFuture.get()
+                    val preview = Preview.Builder()
+                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                        .build()
+                    preview.setSurfaceProvider(previewViews[currentCaptureIndex].surfaceProvider)
 
-    private fun handleNormalCaptureComplete() {
-        val totalImages = getTotalImageCount()
-        if (totalImages >= MAX_CAPTURES) {
-            showAllCapturedImages()
-            showSaveButton()
-        } else {
-            val nextIndex = getNextAvailableIndex()
-            if (nextIndex >= 0) {
-                setupCameraForIndex(nextIndex)
-            }
+                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Failed to switch preview: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }, ContextCompat.getMainExecutor(requireContext()))
         }
     }
 
-    // UI update functions
-    private fun updateUI() {
-        updateCaptureButton()
-        updatePreviewVisibility()
-    }
-
-    private fun updateCaptureButton() {
-        val totalImages = getTotalImageCount()
-
-        captureButton.text = when {
-            isRetakeMode -> "Retake Photo ${retakeIndex + 1}"
-            totalImages >= MAX_CAPTURES -> "Start Over"
-            else -> {
-                val nextIndex = getNextAvailableIndex()
-                if (nextIndex >= 0) "Capture Photo ${nextIndex + 1}" else "Start Over"
-            }
-        }
-
-        captureButton.isEnabled = !isProcessingCapture
-    }
-
-    private fun updatePreviewVisibility() {
-        val activeIndex = when {
-            isRetakeMode -> retakeIndex
-            getTotalImageCount() >= MAX_CAPTURES -> -1 // Hide all previews
-            else -> getNextAvailableIndex()
-        }
-
-        previewViews.forEachIndexed { index, previewView ->
-            previewView.visibility = if (index == activeIndex) View.VISIBLE else View.GONE
-        }
-    }
-
-    // Image processing functions
     private fun convertImageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
         return when (imageProxy.format) {
             ImageFormat.JPEG -> {
@@ -565,81 +555,83 @@ class TwoFragment : Fragment() {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
-    // Collage creation
     private fun createAndSaveCollage() {
         try {
-            val validImages = mutableListOf<Bitmap>()
+            // Get all final bitmaps (both camera and gallery)
+            val finalBitmaps = mutableListOf<Bitmap>()
 
-            // Collect all valid images
-            for (i in 0 until MAX_CAPTURES) {
-                when {
-                    // Camera image
-                    i < capturedBitmaps.size && capturedBitmaps[i] != null && !capturedBitmaps[i]!!.isRecycled -> {
-                        validImages.add(capturedBitmaps[i]!!)
-                    }
-                    // Gallery image
-                    i < galleryUris.size && galleryUris[i] != null -> {
-                        loadBitmapFromUri(galleryUris[i]!!)?.let { bitmap ->
-                            validImages.add(bitmap)
+            for (i in 0 until maxCaptures) {
+                when (imageSources[i]) {
+                    ImageSource.CAMERA -> {
+                        if (i < capturedBitmaps.size) {
+                            finalBitmaps.add(capturedBitmaps[i])
                         }
+                    }
+                    ImageSource.GALLERY -> {
+                        galleryUris[i]?.let { uri ->
+                            val bitmap = getBitmapFromUri(uri)
+                            bitmap?.let { finalBitmaps.add(it) }
+                        }
+                    }
+                    ImageSource.EMPTY -> {
+                        // Skip empty slots
                     }
                 }
             }
 
-            if (validImages.isEmpty()) {
-                showToast("No images to create collage")
+            if (finalBitmaps.isEmpty()) {
+                Toast.makeText(requireContext(), "No images to create collage", Toast.LENGTH_SHORT).show()
                 return
             }
 
-            val collage = createCollageBitmap(validImages)
-            saveBitmapToStorage(collage)
-            collage.recycle()
+            // Use the first image dimensions as reference
+            val firstImage = finalBitmaps[0]
+            val imageWidth = firstImage.width
+            val imageHeight = firstImage.height
+
+            // Create side-by-side collage for 2 images
+            val collageWidth = imageWidth * 2
+            val collageHeight = imageHeight
+
+            val result = Bitmap.createBitmap(collageWidth, collageHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(result)
+
+            // Draw images side by side
+            finalBitmaps.forEachIndexed { index, bitmap ->
+                val xPosition = (index * imageWidth).toFloat()
+                val yPosition = 0f
+
+                // Scale bitmap to fit if needed
+                val scaledBitmap = Bitmap.createScaledBitmap(bitmap, imageWidth, imageHeight, true)
+                canvas.drawBitmap(scaledBitmap, xPosition, yPosition, null)
+
+                // Clean up scaled bitmap if it's different from original
+                if (scaledBitmap != bitmap) {
+                    scaledBitmap.recycle()
+                }
+            }
+
+            saveBitmapToStorage(result)
+            result.recycle()
+
+            // Clean up gallery bitmaps that were created
+            finalBitmaps.forEachIndexed { index, bitmap ->
+                if (imageSources[index] == ImageSource.GALLERY) {
+                    bitmap.recycle()
+                }
+            }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create collage", e)
-            showToast("Failed to create collage: ${e.message}")
+            Toast.makeText(requireContext(), "Failed to create collage: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun createCollageBitmap(images: List<Bitmap>): Bitmap {
-        if (images.isEmpty()) throw IllegalArgumentException("No images provided")
-
-        val firstImage = images[0]
-        val imageWidth = firstImage.width
-        val imageHeight = firstImage.height
-
-        val collageWidth = imageWidth * images.size
-        val collageHeight = imageHeight
-
-        val result = Bitmap.createBitmap(collageWidth, collageHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(result)
-
-        images.forEachIndexed { index, bitmap ->
-            val scaledBitmap = if (bitmap.width != imageWidth || bitmap.height != imageHeight) {
-                Bitmap.createScaledBitmap(bitmap, imageWidth, imageHeight, true)
-            } else {
-                bitmap
-            }
-
-            val xPosition = (index * imageWidth).toFloat()
-            canvas.drawBitmap(scaledBitmap, xPosition, 0f, null)
-
-            // Clean up scaled bitmap if it's different from original
-            if (scaledBitmap != bitmap && !scaledBitmap.isRecycled) {
-                scaledBitmap.recycle()
-            }
-        }
-
-        return result
-    }
-
-    private fun loadBitmapFromUri(uri: Uri): Bitmap? {
+    private fun getBitmapFromUri(uri: Uri): Bitmap? {
         return try {
-            requireContext().contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream)
-            }
+            val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
+            BitmapFactory.decodeStream(inputStream)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load bitmap from URI: $uri", e)
+            Log.e("TwoFragment", "Error loading bitmap from URI: ${e.message}")
             null
         }
     }
@@ -656,171 +648,156 @@ class TwoFragment : Fragment() {
 
         try {
             val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-            uri?.let { savedUri ->
-                resolver.openOutputStream(savedUri)?.use { stream ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
+            uri?.let {
+                resolver.openOutputStream(it)?.use { stream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+                    db.databaseDao().insertImage(ImageEntity(name= filename, path = it.toString(), timeStamp = System.currentTimeMillis()))
 
-                    // Save to database
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        try {
-                            db.databaseDao().insertImage(
-                                ImageEntity(
-                                    name = filename,
-                                    path = savedUri.toString(),
-                                    timeStamp = System.currentTimeMillis()
-                                )
-                            )
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to save to database", e)
-                        }
-                    }
-
-                    showToast("2-Photo collage saved to Pictures/Collages!")
+                    Toast.makeText(requireContext(), "2-Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
                     findNavController().popBackStack()
                 }
             } ?: run {
-                showToast("Failed to create file")
+                Toast.makeText(requireContext(), "Failed to create file.", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save collage", e)
-            showToast("Failed to save collage: ${e.message}")
+            Toast.makeText(requireContext(), "Failed to save collage: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Reset functionality
-    private fun resetCapture() {
-        isRetakeMode = false
-        retakeIndex = -1
-        isProcessingCapture = false
+    private fun updateUI() {
+        val totalImages = getTotalImageCount()
+        val nextCameraIndex = getNextCameraSlotIndex()
 
-        hideAllDustbinIcons()
-
-        // Clean up bitmaps
-        capturedBitmaps.forEach { bitmap ->
-            bitmap?.let {
-                if (!it.isRecycled) {
-                    it.recycle()
-                }
+        when {
+            isRetakeMode -> {
+                captureButton.text = "Retake Photo ${retakeIndex + 1}"
+                captureButton.visibility = View.VISIBLE
+            }
+            nextCameraIndex != -1 -> {
+                captureButton.text = "Capture Photo ${nextCameraIndex + 1}"
+                captureButton.visibility = View.VISIBLE
+            }
+            totalImages >= maxCaptures -> {
+                captureButton.text = "Start Over"
+                captureButton.visibility = View.VISIBLE
+            }
+            else -> {
+                captureButton.visibility = View.GONE
             }
         }
 
-        // Reset lists
-        initializeImageLists()
+        // Show/hide preview views based on current state
+        if (isRetakeMode) {
+            previewViews.forEachIndexed { index, previewView ->
+                previewView.visibility = if (index == retakeIndex) View.VISIBLE else View.GONE
+            }
+        } else {
+            previewViews.forEachIndexed { index, previewView ->
+                previewView.visibility = if (index == currentCaptureIndex && currentCaptureIndex < maxCaptures)
+                    View.VISIBLE else View.GONE
+            }
+        }
 
-        // Clear UI
+        // Show save button if all slots are filled
+        if (totalImages >= maxCaptures) {
+            binding.saveButton.visibility = View.VISIBLE
+        } else {
+            binding.saveButton.visibility = View.GONE
+        }
+    }
+
+    private fun resetCapture() {
+        currentCaptureIndex = 0
+        isRetakeMode = false
+        retakeIndex = -1
+        retakeFlag = false
+
+        hideAllDustbinIcons()
+
+        // Clean up camera bitmaps
+        capturedBitmaps.forEach { it.recycle() }
+        capturedBitmaps.clear()
+
+        // Reset all tracking lists
+        imageSources.clear()
+        galleryUris.clear()
+        initializeLists()
+
         imageOverlays.forEach {
             it.setImageBitmap(null)
             it.visibility = View.GONE
         }
 
-        binding.saveButton.visibility = View.GONE
         updateUI()
         startCamera()
     }
 
-    // Gallery picker result handler
+    override fun onDestroy() {
+        super.onDestroy()
+        // Clean up bitmaps to prevent memory leaks
+        capturedBitmaps.forEach { it.recycle() }
+        capturedBitmaps.clear()
+    }
+
     private val imagePickerLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 val uri: Uri? = result.data?.data
                 if (uri != null) {
-                    setGalleryImageAtIndex(setImageIndex, uri)
+                    val targetIndex = setImageIndex
 
-                    // Check if we have all images needed
-                    val totalImages = getTotalImageCount()
-                    if (totalImages >= MAX_CAPTURES) {
-                        showAllCapturedImages()
-                        showSaveButton()
+                    // Store the URI and update source tracking
+                    galleryUris[targetIndex] = uri
+                    imageSources[targetIndex] = ImageSource.GALLERY
+
+                    // Load and display the image
+                    Glide.with(requireContext())
+                        .load(uri)
+                        .into(imageOverlays[targetIndex])
+
+                    // Show the overlay
+                    imageOverlays[targetIndex].visibility = View.VISIBLE
+
+                    setImageIndex = 0
+
+                    // Handle retake mode specifically
+                    if (isRetakeMode && targetIndex == retakeIndex) {
+                        // Complete the retake process
+                        exitRetakeMode()
                     } else {
-                        val nextIndex = getNextAvailableIndex()
-                        if (nextIndex >= 0) {
-                            setupCameraForIndex(nextIndex)
+                        // Update current capture index for camera
+                        currentCaptureIndex = getNextCameraSlotIndex()
+
+                        // Check if we have all images needed
+                        val totalImages = getTotalImageCount()
+                        if (totalImages >= maxCaptures) {
+                            // Hide all previews and show save button
+                            previewViews.forEach { it.visibility = View.GONE }
+                            binding.saveButton.visibility = View.VISIBLE
+                            binding.saveButton.setOnClickListener {
+                                createAndSaveCollage()
+                            }
+                        } else if (currentCaptureIndex != -1) {
+                            // Continue with camera for remaining slots
+                            switchToNextPreview()
                         }
                     }
-                    exitRetakeMode()
 
                     updateUI()
                 } else {
-                    Log.e(TAG, "Failed to get image URI from gallery")
-                    showToast("Failed to select image from gallery")
-                }
-            }
-            setImageIndex = 0 // Reset
-        }
-
-    // Utility functions
-    private fun showToast(message: String) {
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-    }
-
-    // Lifecycle management
-    override fun onDestroy() {
-        super.onDestroy()
-        capturedBitmaps.forEach { bitmap ->
-            bitmap?.let {
-                if (!it.isRecycled) {
-                    it.recycle()
+                    Log.e("ImagePicker", "Failed to get image URI")
                 }
             }
         }
-        capturedBitmaps.clear()
-        galleryUris.clear()
+
+    fun printLogs() {
+        Log.d("Current capture index:",currentCaptureIndex.toString())
+        Log.d("Retake mode",retakeIndex.toString())
+        Log.d("Retake Flag",retakeFlag.toString())
     }
 
-    private fun switchCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
-        cameraProviderFuture.addListener({
-            try {
-                val cameraProvider = cameraProviderFuture.get()
-
-                // Toggle camera
-                isBackCamera = !isBackCamera
-
-                // Get current active preview index
-                val activeIndex = when {
-                    isRetakeMode -> retakeIndex
-                    getTotalImageCount() >= MAX_CAPTURES -> -1
-                    else -> getNextAvailableIndex()
-                }
-
-                if (activeIndex >= 0) {
-                    val preview = Preview.Builder()
-                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                        .build()
-
-                    imageCapture = ImageCapture.Builder()
-                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                        .setJpegQuality(JPEG_QUALITY)
-                        .build()
-
-                    val cameraSelector = if (isBackCamera) {
-                        CameraSelector.DEFAULT_BACK_CAMERA
-                    } else {
-                        CameraSelector.DEFAULT_FRONT_CAMERA
-                    }
-
-                    cameraProvider.unbindAll()
-                    preview.setSurfaceProvider(previewViews[activeIndex].surfaceProvider)
-                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
-
-//                    showToast(if (isBackCamera) "Back Camera" else "Front Camera")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Camera switch failed", e)
-                showToast("Camera switch failed")
-            }
-        }, ContextCompat.getMainExecutor(requireContext()))
-    }
-
-    companion object {
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            TwoFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
-            }
+    private fun createTempFile(): File {
+        val dir = requireContext().cacheDir
+        return File.createTempFile("temp_image", ".jpg", dir)
     }
 }
