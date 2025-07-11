@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.findNavController
+import com.bumptech.glide.Glide
 import com.google.android.material.snackbar.Snackbar
 import com.o7solutions.task.databinding.FragmentStartBinding
 
@@ -61,6 +62,11 @@ class StartFragment : Fragment() {
         binding.startButton.setOnClickListener {
             checkAndRequestCameraPermission()
         }
+
+
+//        Glide.with(requireContext())
+//            .load("https://plus.unsplash.com/premium_photo-1664474619075-644dd191935f?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8aW1hZ2V8ZW58MHx8MHx8fDA%3D")
+//            .into(binding.collage)
 
         binding.savedImages.setOnClickListener {
             findNavController().navigate(R.id.savedListFragment)
