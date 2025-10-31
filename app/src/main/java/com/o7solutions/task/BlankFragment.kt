@@ -1,10 +1,8 @@
 package com.o7solutions.task
 
-import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
@@ -214,7 +212,7 @@ class BlankFragment : Fragment() {
     private fun showDustbinIcon(index: Int) {
         dustbinIcons.forEach { it.visibility = View.GONE }
         dustbinIcons[index].visibility = View.VISIBLE
-        Toast.makeText(requireContext(), "Tap dustbin to retake photo ${index + 1}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Tap dustbin to retake photo", Toast.LENGTH_SHORT).show()
     }
 
     private fun hideDustbinIcon(index: Int) {
@@ -243,7 +241,7 @@ class BlankFragment : Fragment() {
         setupCameraForRetake()
         updateUI()
 
-        Toast.makeText(requireContext(), "Retaking photo ${index + 1}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Retaking photo", Toast.LENGTH_SHORT).show()
     }
 
     private fun clearImageAtIndex(index: Int) {
@@ -272,7 +270,7 @@ class BlankFragment : Fragment() {
                 val cameraProvider = cameraProviderFuture.get()
                 setupCamera(cameraProvider)
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Camera initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Camera initialization failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
@@ -672,7 +670,7 @@ class BlankFragment : Fragment() {
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
                     db.databaseDao().insertImage(ImageEntity(name= filename, path = it.toString(), timeStamp = System.currentTimeMillis()))
 
-                    Toast.makeText(requireContext(), "4-Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
                     findNavController().popBackStack()
                 }
             } ?: run {

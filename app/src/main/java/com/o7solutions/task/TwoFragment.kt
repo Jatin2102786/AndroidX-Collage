@@ -198,7 +198,7 @@ class TwoFragment : Fragment() {
     private fun showDustbinIcon(index: Int) {
         dustbinIcons.forEach { it.visibility = View.GONE }
         dustbinIcons[index].visibility = View.VISIBLE
-        Toast.makeText(requireContext(), "Tap dustbin to retake photo ${index + 1}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Tap dustbin to retake photo", Toast.LENGTH_SHORT).show()
     }
 
     private fun hideDustbinIcon(index: Int) {
@@ -227,7 +227,7 @@ class TwoFragment : Fragment() {
         setupCameraForRetake()
         updateUI()
 
-        Toast.makeText(requireContext(), "Retaking photo ${index + 1}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Retaking photo ", Toast.LENGTH_SHORT).show()
     }
 
     private fun clearImageAtIndex(index: Int) {
@@ -653,7 +653,7 @@ class TwoFragment : Fragment() {
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
                     db.databaseDao().insertImage(ImageEntity(name= filename, path = it.toString(), timeStamp = System.currentTimeMillis()))
 
-                    Toast.makeText(requireContext(), "2-Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "Photo collage saved to Pictures/Collages!", Toast.LENGTH_LONG).show()
                     findNavController().popBackStack()
                 }
             } ?: run {
@@ -670,11 +670,11 @@ class TwoFragment : Fragment() {
 
         when {
             isRetakeMode -> {
-                captureButton.text = "Retake Photo ${retakeIndex + 1}"
+                captureButton.text = "Retake Photo"
                 captureButton.visibility = View.VISIBLE
             }
             nextCameraIndex != -1 -> {
-                captureButton.text = "Capture Photo ${nextCameraIndex + 1}"
+                captureButton.text = "Capture Photo"
                 captureButton.visibility = View.VISIBLE
             }
             totalImages >= maxCaptures -> {
